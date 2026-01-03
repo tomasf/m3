@@ -1,5 +1,5 @@
 import Foundation
-import SwiftSCAD
+import Cadova
 
 struct LinearRail: Shape3D {
     let size = Vector3D(9, 6.54, 300)
@@ -8,7 +8,7 @@ struct LinearRail: Shape3D {
     let holeHeadDiameter = 5.8
     let holeHeadDepth = 4.0
 
-    var body: Geometry3D {
+    var body: any Geometry3D {
         Box(size)
             .aligned(at: .centerX)
             .subtracting {
@@ -30,7 +30,7 @@ struct LinearRailCarriage: Shape3D {
     let holeDistance = Vector2D(16, 15)
     let offsetFromRail = 2.0
 
-    var body: Geometry3D {
+    var body: any Geometry3D {
         Box(size)
             .aligned(at: .centerXY)
             .subtracting {
@@ -54,7 +54,7 @@ struct StepperMotor: Shape3D {
     let shaftFlatDepth = 0.5
     let shaftFlatLength = 17.0
 
-    var body: Geometry3D {
+    var body: any Geometry3D {
         Box(size)
             .aligned(at: .centerXY)
             .adding {
@@ -82,7 +82,7 @@ struct Pulley: Shape3D {
     let flangeThickness = 1.0
     let feedDiameter = 12.2
 
-    var body: Geometry3D {
+    var body: any Geometry3D {
         Cylinder(diameter: feedDiameter, height: length)
         Cylinder(diameter: wideDiameter, height: solidLength)
         Cylinder(diameter: wideDiameter, height: flangeThickness)
@@ -91,13 +91,13 @@ struct Pulley: Shape3D {
 }
 
 struct Idler: Shape3D {
-    let outerDiameter = 18.0
+    let outerDiameter = 15.0
     let feedDiameter = 12.0
-    let width = 8.6
-    let flangeThickness = 1.0
-    let centerDiameter = 3.0
+    let width = 10.0
+    let flangeThickness = 1.5
+    let centerDiameter = 5.0
 
-    var body: Geometry3D {
+    var body: any Geometry3D {
         Stack(.z, alignment: .centerXY) {
             Cylinder(diameter: outerDiameter, height: flangeThickness)
             Cylinder(diameter: feedDiameter, height: width - 2 * flangeThickness)
@@ -119,7 +119,7 @@ struct Duet: Shape3D {
     static let screwPilotHoleDiameter = 3.4
     static let screwPostDiameter = 8.0
 
-    var body: Geometry3D {
+    var body: any Geometry3D {
         Rectangle(Duet.size.xy)
             .aligned(at: .center)
             .subtracting {
@@ -137,9 +137,9 @@ struct EndstopBoard: Shape3D {
     let holeDiameter = 3.0
     let endstopSize = Vector3D(13, 6.2, 6.5)
 
-    var body: Geometry3D {
+    var body: any Geometry3D {
         Rectangle(size.xy)
-            .roundingRectangleCorners(.top, radius: holeInset)
+            .cuttingEdgeProfile(.fillet(radius: holeInset), on: .top)
             .aligned(at: .centerX)
             .subtracting {
                 Circle(diameter: holeDiameter)

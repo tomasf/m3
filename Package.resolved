@@ -1,41 +1,69 @@
 {
+  "originHash" : "c0a3c6dba7fbcc98ccb21659258a2064968b997a9bcbd4370d8394954acafb08",
   "pins" : [
+    {
+      "identity" : "apus",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/tomasf/Apus.git",
+      "state" : {
+        "revision" : "7094e92897a4630375d46c9d2cc7d9408f7b7abe",
+        "version" : "0.1.2"
+      }
+    },
+    {
+      "identity" : "cadova",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/tomasf/Cadova.git",
+      "state" : {
+        "revision" : "c18b67bb1ae12d574ba25f6e1b4a996d9e5d3085",
+        "version" : "0.4.1"
+      }
+    },
     {
       "identity" : "helical",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/tomasf/Helical.git",
       "state" : {
-        "branch" : "main",
-        "revision" : "59b028c0b8cff1efa476cb9b438108d598e5e6aa"
+        "revision" : "da69a7aa35afdd41bbf910f26b1fbd1707e66b21",
+        "version" : "0.4.2"
       }
     },
     {
-      "identity" : "swift-collections",
+      "identity" : "manifold-swift",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-collections.git",
+      "location" : "https://github.com/tomasf/manifold-swift.git",
       "state" : {
-        "revision" : "94cf62b3ba8d4bed62680a282d4c25f9c63c2efb",
-        "version" : "1.1.0"
+        "revision" : "8d030bc8bf11b274f7dfbc1215ad04f74098b38b",
+        "version" : "0.2.3"
       }
     },
     {
-      "identity" : "swift-log",
+      "identity" : "nodal",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-log.git",
+      "location" : "https://github.com/tomasf/Nodal.git",
       "state" : {
-        "revision" : "e97a6fcb1ab07462881ac165fdbb37f067e205d5",
-        "version" : "1.5.4"
+        "revision" : "275b8efd1d36d45154759a19e8cad709c2a36c64",
+        "version" : "0.4.1"
       }
     },
     {
-      "identity" : "swiftscad",
+      "identity" : "threemf",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/tomasf/SwiftSCAD.git",
+      "location" : "https://github.com/tomasf/ThreeMF.git",
       "state" : {
-        "branch" : "main",
-        "revision" : "3eba9c1a27fc020256f0c7f11000047b45cc79f8"
+        "revision" : "d31fdea80c561b87983928b01fb8565cccde2382",
+        "version" : "0.2.2"
+      }
+    },
+    {
+      "identity" : "zip",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/tomasf/Zip.git",
+      "state" : {
+        "revision" : "89a20ecc82eddf3d1cb40b55e2143167ee4367d3",
+        "version" : "2.1.1"
       }
     }
   ],
-  "version" : 2
+  "version" : 3
 }

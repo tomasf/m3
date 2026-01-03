@@ -1,5 +1,5 @@
 import Foundation
-import SwiftSCAD
+import Cadova
 import Helical
 
 let baseWallThickness = 2.0
@@ -21,7 +21,7 @@ let sideCoversShape = cornerCoverShape.repeated(count: 3)
 let baseRailNutTrapBarSize = railNutTrapWidth + 1.0
 let baseSensorBoardMountXOffset = -50.0
 
-let baseFlippedTransform = AffineTransform3D.rotation(x: 180°).translated(z: baseHeight - baseTopThickness)
+let baseFlippedTransform = Transform3D.rotation(x: 180°).translated(z: baseHeight - baseTopThickness)
 
 let ledBoardSize = Vector3D(19.05, 15.05, 1.5)
 let ledBoardHoleDiameter = 2.2
@@ -43,11 +43,7 @@ let basePowerConnectorHoleDiameter = 7.8 + tolerance
 
 
 let base = baseShape
-    .extruded(
-        height: baseHeight,
-        topEdge: .chamfer(size: baseTopChamferSize),
-        method: .convexHull
-    )
+    .extruded(height: baseHeight, topEdge: .chamfer(depth: baseTopChamferSize))
     .adding {
         // Don't chamfer corners
         sideCoversShape
@@ -59,7 +55,7 @@ let base = baseShape
 
         // Expose pulley area
         baseInnerShape
-            .intersection {
+            .intersecting {
                 Rectangle([baseCircleDiameterEquivalent, baseCircleDiameterEquivalent])
                     .aligned(at: .left, .centerY)
                     .translated(x: distanceToOuterPoint - baseStepperWallInset)
@@ -85,25 +81,25 @@ let base = baseShape
                 x: distanceToOuterPoint - cornerCoverMountCenterHoleInset,
                 y: cornerCoverMountCenterHoleYOffset
             )
-            .intersection { baseShape }
+            .intersecting { baseShape }
             .extruded(height: mountThickness)
             .adding {
                 Cylinder(diameter: 5.5, height: 2.2)
                     .translated(x: distanceToOuterPoint - cornerCoverMountCenterHoleInset,
                                 y: cornerCoverMountCenterHoleYOffset,
                                 z: -2.2)
-                    .background()
+                    .inBackground()
             }
             .translated(z: baseHeight - mountThickness)
             .symmetry(over: .y)
             .repeated(around: .z, count: 3)
-            .disabled()
+            .hidden()
 
         // Stepper motor wall
         Rectangle([baseStepperWallThickness, baseCircleDiameterEquivalent])
             .aligned(at: .centerY)
             .translated(x: distanceToOuterPoint - baseStepperWallInset - baseStepperWallThickness)
-            .intersection {
+            .intersecting {
                 baseShape
             }
             .extruded(height: baseHeight - baseTopThickness)
@@ -117,7 +113,7 @@ let base = baseShape
                     .aligned(at: .centerY, .maxX)
                     .translated(x: distanceToOuterPoint - baseStepperWallInset - baseStepperWallThickness)
                     .translated(z: baseHeight - baseTopThickness - baseRailNutTrapBarSize)
-                    .intersection {
+                    .intersecting {
                         baseShape.extruded(height: baseHeight)
                     }
             }
@@ -164,11 +160,14 @@ let base = baseShape
             .symmetry(over: .y)
             .extruded(height: mountBarHeight)
             .adding {
-                Duet().translated(z: mountBarHeight + 0.01).background()
+                Duet()
+                    .translated(z: mountBarHeight + 0.01)
+                    .colored(.darkGreen, alpha: 0.4)
+                    .inBackground()
             }
             .translated(x: duetXOffset)
             .transformed(baseFlippedTransform)
-            .intersection {
+            .intersecting {
                 baseInnerShape.extruded(height: baseHeight)
             }
 
@@ -221,7 +220,7 @@ let base = baseShape
 
                 Rectangle([ledBoardLEDSpaceSize, ledBoardLEDSpaceSize])
                     .aligned(at: .center)
-                    .disabled()
+                    .hidden()
 
                 Rectangle([ledBoardConnectorInset + 1, ledBoardSize.y + 2])
                     .aligned(at: .centerY)
@@ -232,7 +231,7 @@ let base = baseShape
             .rotated(z: 90°)
             .rotated(y: 90°)
             .translated(x: -distanceToEdge, z: ledBoardCenterZ)
-            .intersection {
+            .intersecting {
                 baseShape.extruded(height: baseHeight)
             }
 
@@ -251,7 +250,7 @@ let base = baseShape
             .translated(x: distanceToEdgePivot)
             .symmetry(over: .y)
             .repeated(around: .z, count: 3)
-            .intersection {
+            .intersecting {
                 baseShape.extruded(height: baseHeight)
             }
 
@@ -290,15 +289,18 @@ let base = baseShape
             .translated(x: distanceToOuterPoint - baseStepperWallInset - baseStepperWallThickness)
             .translated(z: baseHeight - stepperZFromTop)
             .repeated(around: .z, count: 3)
-            .background()
+            .colored(.gray, alpha: 0.2)
+            .inBackground()
     }
     .subtracting {
         Union {
             // Holes in stepper motor wall
-            Teardrop(diameter: stepper.circleDiameter + 1, style: .bridged)
+            Circle(diameter: stepper.circleDiameter + 1)
+                .overhangSafe(.bridge)
                 .rotated(-90°)
                 .adding {
-                    Teardrop(diameter: stepper.holeDiameter + 0.5, style: .bridged)
+                    Circle(diameter: stepper.holeDiameter + 0.5)
+                        .overhangSafe(.bridge)
                         .rotated(-90°)
                         .distributed(at: [-stepper.holeDistance / 2, stepper.holeDistance / 2], along: .x)
                         .translated(y: stepper.holeDistance / 2)
@@ -309,7 +311,7 @@ let base = baseShape
                     Cylinder(diameter: 5.5, height: 3)
                         .translated(x: stepper.holeDistance / 2, y: stepper.holeDistance / 2, z: 1 + baseStepperWallThickness)
                         .symmetry(over: .xy)
-                        .background()
+                        .inBackground()
                 }
                 .rotated(y: 90°)
                 .translated(
@@ -329,7 +331,8 @@ let base = baseShape
                 .aligned(at: .centerX, .centerY)
                 .translated(z: -depth + railNutTrapWidth / 2)
                 .adding {
-                    Teardrop(diameter: 3.5, style: .bridged)
+                    Circle(diameter: 3.5)
+                        .overhangSafe(.bridge)
                         .extruded(height: baseRailNutTrapBarSize + 10)
                         .translated(z: -10)
                         .rotated(y: 90°)
@@ -337,7 +340,8 @@ let base = baseShape
                 }
                 .translated(x: distanceToOuterPoint - baseStepperWallInset - baseStepperWallThickness - baseRailNutTrapBarSize / 2, z: railOffsetFromBottom + rail.holeDistance / 2)
 
-            Teardrop(diameter: rail.holeHeadDiameter + 0.5, style: .bridged)
+            Circle(diameter: rail.holeHeadDiameter + 0.5)
+                .overhangSafe(.bridge)
                 .extruded(height: 10)
                 .rotated(z: -90°)
                 .rotated(y: 90°)
@@ -370,7 +374,8 @@ let base = baseShape
 
         // Buttons
         let buttonHoleDiameter = 15 + tolerance - 0.1
-        Teardrop(diameter: buttonHoleDiameter, style: .bridged)
+        Circle(diameter: buttonHoleDiameter)
+            .overhangSafe(.bridge)
             .subtracting {
                 Rectangle([1.5 - tolerance, 1.0 - tolerance])
                     .aligned(at: .centerX)
@@ -395,12 +400,13 @@ let base = baseShape
             .convexHull()
             .rotated(y: 90°)
             .translated(x: -distanceToEdge, z: ledBoardCenterZ)
-            .intersection {
+            .intersecting {
                 baseShape.offset(amount: -baseFrontLEDThickness, style: .round).extruded(height: baseHeight)
             }
 
         // Power connector
-        Teardrop(diameter: basePowerConnectorHoleDiameter, style: .bridged)
+        Circle(diameter: basePowerConnectorHoleDiameter)
+            .overhangSafe(.bridge)
             .rotated(-90°)
             .extruded(height: baseWallThickness + 2)
             .rotated(y: 90°)

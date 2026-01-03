@@ -1,10 +1,10 @@
 import Foundation
-import SwiftSCAD
+import Cadova
 import Helical
 
 struct Effector: Shape3D {
     static let thickness = 7.0
-    static let armOffset = 30.0
+    static let armOffset = 29.0
     static let armWidth = armMountWidth
 
     static let mountBoltLength = 16.0
@@ -61,18 +61,20 @@ struct Effector: Shape3D {
 
     static let topDiameter = Self.hotendHeatsinkDiameter + 20
 
+    @Environment(\.tolerance) var tolerance
+
     // Length from bottom to nozzle tip: 21-22 mm
 
     var footprint: any Geometry2D {
         return Rectangle(x: Self.armOffset + Self.thickness / 2, y: rodSpacing - Self.armWidth)
             .aligned(at: .centerY)
             .adding {
-                Rectangle(x: Self.armOffset - 5, y: 20)
+                Rectangle(x: Self.armOffset - 4, y: 20)
                     .aligned(at: .centerY)
                     .rotated(60°)
             }
             .repeated(count: 3)
-            .rounded(amount: 20, side: .inside)
+            .rounded(insideRadius: 16)
             .subtracting {
                 Circle(diameter: Self.cableSlitWidth)
                     .cloned {
@@ -95,14 +97,14 @@ struct Effector: Shape3D {
             .addingLine(to: [Self.armOffset, 0])
 
         return Polygon(path)
-            .extruded()
-            .intersection { footprint.extruded(height: top) }
+            .revolved()
+            .intersecting { footprint.extruded(height: top) }
             .adding {
                 footprint.extruded(height: Self.thickness)
                 Box([-Self.fanXOffset, Self.fanSize.x, Self.hotendZOffset + Self.hotendBodyHeight + Self.hotendMountFullHeight])
                     .aligned(at: .minX, .centerY)
                     .translated(x: Self.fanXOffset)
-                    .disabled()
+                    .hidden()
             }
             .subtracting {
                 // Fan
@@ -124,113 +126,113 @@ struct Effector: Shape3D {
 
     static let baseHeight = Self.hotendZOffset + Self.hotendBodyHeight
 
-    @UnionBuilder3D
-    var base: Geometry3D {
-        EnvironmentReader { e in
-            shape
-                .intersection { Cylinder(diameter: 100, height: Self.baseHeight) }
-                .subtracting {
-                    Union {
-                        // Fillet the ends
-                        EdgeProfile.fillet(radius: Self.thickness / 2).shape()
-                            .extruded(height: rodSpacing)
-                            .rotated(x: 90°)
-                            .rotated(y: 180°)
-                            .aligned(at: .centerY)
-                            .translated(x: Self.armOffset + Self.thickness / 2 + 0.01, z: Self.thickness + 0.01)
-
-                        // Arm mounts
-                        Teardrop(diameter: Self.mountHoleDiameter, style: .bridged)
-                            .extruded(height: rodSpacing)
-                            .rotated(x: 90°)
-                            .aligned(at: .centerY)
-                            .translated(x: Self.armOffset, z: Self.mountZ)
-
-                        Self.mountNut.nutTrap(depthClearance: 0.8)
-                            .rotated(x: -90°)
-                            .translated(x: Self.armOffset, y: (rodSpacing + Self.armWidth - 2 * Self.mountBoltLength) / 2 - 0.01, z: Self.mountZ)
-                            .cloned {
-                                $0.translated(z: 10)
-                            }
-                            .convexHull()
-                            .symmetry(over: .y)
-                    }
-                    .repeated(around: .z, count: 3)
-
-                    Cylinder(bottomDiameter: 20, topDiameter: 12, height: 4)
-                        .translated(z: -0.01)
-
-                    Cylinder(diameter: Self.hotendSpringDiameter, height: Self.thickness)
-                        .translated(z: -1)
-
-                    Rectangle(x: Self.hotendFanDuctLength + e.tolerance, y: Self.hotendFanDuctWidth + e.tolerance)
+    @GeometryBuilder3D
+    var base: any Geometry3D {
+        shape
+            .intersecting { Cylinder(diameter: 100, height: Self.baseHeight) }
+            .subtracting {
+                Union {
+                    // Fillet the ends
+                    #warning("2025-08-02 double-check this")
+                    EdgeProfile.fillet(radius: Self.thickness / 2).profile
+                        .extruded(height: rodSpacing)
+                        .rotated(x: 90°)
+                        .rotated(y: 180°)
                         .aligned(at: .centerY)
-                        .translated(x: Self.hotendFanDuctOffset)
-                        .adding {
-                            Circle(diameter: Self.hotendHeatsinkDiameter + 2 + e.tolerance)
+                        .translated(x: Self.armOffset + Self.thickness / 2 + 0.01, z: Self.thickness + 0.01)
+
+                    // Arm mounts
+                    Circle(diameter: Self.mountHoleDiameter)
+                        .overhangSafe(.bridge)
+                        .extruded(height: rodSpacing)
+                        .rotated(x: 90°)
+                        .aligned(at: .centerY)
+                        .translated(x: Self.armOffset, z: Self.mountZ)
+
+                    Self.mountNut.nutTrap(depthClearance: 0.8)
+                        .rotated(x: -90°)
+                        .translated(x: Self.armOffset, y: (rodSpacing + Self.armWidth - 2 * Self.mountBoltLength) / 2 - 0.01, z: Self.mountZ)
+                        .cloned {
+                            $0.translated(z: 10)
                         }
-                        .rounded(amount: 1)
-                        .extruded(height: Self.thickness + Self.hotendBodyHeight)
-                        .translated(z: Self.hotendZOffset)
-
-                    // Fan outlet
-                    Box([Self.fanOutletSize.y, Self.fanOutletSize.x, Self.thickness])
-                        .aligned(at: .centerXY)
-                        .translated(x: Self.fanXOffset - Self.fanSize.z / 2, z: -0.01)
-
-                    Cylinder(diameter: Self.fanDuctMountHoleDiameter, height: Self.fanDuctMountHoleDepth)
-                        .translated(x: Self.fanXOffset - Self.fanSize.z / 2, y: Self.fanDuctMountHoleOffset, z: -0.01)
+                        .convexHull()
                         .symmetry(over: .y)
+                }
+                .repeated(around: .z, count: 3)
 
-                    // Clear space in front of fan
-                    Box(Self.fanSize + tolerance)
-                        .rotated(x: 90°, z: -90°)
-                        .aligned(at: .maxX, .centerY)
-                        .translated(x: Self.fanXOffset - 5, z: Self.thickness)
+                Cylinder(bottomDiameter: 20, topDiameter: 12, height: 4)
+                    .translated(z: -0.01)
 
-                    // Clear space in front of hotend fan
-                    Box([20, 25 + e.tolerance, 20])
-                        .aligned(at: .minX, .centerY)
-                        .translated(x: Self.hotendFanDuctLength + Self.hotendFanDuctOffset - 1, z: Self.thickness)
+                Cylinder(diameter: Self.hotendSpringDiameter, height: Self.thickness)
+                    .translated(z: -1)
 
-                    // Hotend vents
-                    Box([50, 3, 10])
-                        .aligned(at: .centerY)
-                        .rotated(z: 180° - 55°)
-                        .translated(z: Self.thickness + 5)
-                        .symmetry(over: .y)
-
-                    Cylinder(diameter: 3, height: 50)
-                        .rotated(y: -90° - 48°)
-                        .repeated(around: .z, in: -50°...50°, count: 5)
-                        .translated(z: 14.0)
-
-                    for mountPoint in Self.hotendMountTopScrewHoles {
-                        Cylinder(diameter: Self.hotendMountTopScrewHoleDiameter, height: Self.hotendMountTopScrewHoleDepth)
-                            .transformed(.rotation(from: .up, to: mountPoint.direction))
-                            .translated(mountPoint.top)
-                            .translated(z: Self.baseHeight)
-                            .symmetry(over: .y)
-                            //.highlighted()
+                Rectangle(x: Self.hotendFanDuctLength + tolerance, y: Self.hotendFanDuctWidth + tolerance)
+                    .aligned(at: .centerY)
+                    .translated(x: Self.hotendFanDuctOffset)
+                    .adding {
+                        Circle(diameter: Self.hotendHeatsinkDiameter + 2 + tolerance)
                     }
+                    .rounded(radius: 1)
+                    .extruded(height: Self.thickness + Self.hotendBodyHeight)
+                    .translated(z: Self.hotendZOffset)
+
+                // Fan outlet
+                Box([Self.fanOutletSize.y, Self.fanOutletSize.x, Self.thickness])
+                    .aligned(at: .centerXY)
+                    .translated(x: Self.fanXOffset - Self.fanSize.z / 2, z: -0.01)
+
+                Cylinder(diameter: Self.fanDuctMountHoleDiameter, height: Self.fanDuctMountHoleDepth)
+                    .translated(x: Self.fanXOffset - Self.fanSize.z / 2, y: Self.fanDuctMountHoleOffset, z: -0.01)
+                    .symmetry(over: .y)
+
+                // Clear space in front of fan
+                Box(Self.fanSize + tolerance)
+                    .rotated(x: 90°, z: -90°)
+                    .aligned(at: .maxX, .centerY)
+                    .translated(x: Self.fanXOffset - 5, z: Self.thickness)
+
+                // Clear space in front of hotend fan
+                Box([20, 25 + tolerance, 20])
+                    .aligned(at: .minX, .centerY)
+                    .translated(x: Self.hotendFanDuctLength + Self.hotendFanDuctOffset - 1, z: Self.thickness)
+
+                // Hotend vents
+                Box([50, 3, 10])
+                    .aligned(at: .centerY)
+                    .rotated(z: 180° - 55°)
+                    .translated(z: Self.thickness + 5)
+                    .symmetry(over: .y)
+
+                Cylinder(diameter: 3, height: 50)
+                    .rotated(y: -90° - 48°)
+                    .repeated(around: .z, in: -50°...50°, count: 5)
+                    .translated(z: 14.0)
+
+                for mountPoint in Self.hotendMountTopScrewHoles {
+                    Cylinder(diameter: Self.hotendMountTopScrewHoleDiameter, height: Self.hotendMountTopScrewHoleDepth)
+                        .transformed(.rotation(from: .up, to: Direction3D(mountPoint.direction)))
+                        .translated(mountPoint.top)
+                        .translated(z: Self.baseHeight)
+                        .symmetry(over: .y)
+                    //.highlighted()
                 }
-                .adding {
-                    revoMicro
-                        .background()
-                    //.disabled()
-                }
-        }
+            }
+            .adding {
+                revoMicro
+                    .inBackground()
+                //.disabled()
+            }
     }
 
-    var body: Geometry3D {
+    var body: any Geometry3D {
         base
         fanDuct
             .rotated(y: 180°, z: -90°)
             .translated(x: Self.fanXOffset - Self.fanSize.z / 2)
 
         top.translated(z: Self.baseHeight + 0.01)
-            //.background()
-        shape.translated(x: 80)
+            //.inBackground()
+        //shape.translated(x: 80)
 
         // Visualized arms
         Cylinder(diameter: 6, height: 140)
@@ -238,15 +240,15 @@ struct Effector: Shape3D {
             .translated(x: Self.armOffset, y: rodSpacing / 2, z: Self.thickness / 2)
             .symmetry(over: .y)
             .repeated(around: .z, count: 3)
-            .background()
-            .disabled()
+            .inBackground()
+            .hidden()
     }
 
-    @UnionBuilder3D
-    var top: Geometry3D {
-        EnvironmentReader { e in
+    @GeometryBuilder3D
+    var top: any Geometry3D {
+        Union {
             shape
-                .intersection {
+                .intersecting {
                     Cylinder(diameter: 100, height: 100)
                         .translated(z: Self.baseHeight)
                 }
@@ -254,22 +256,22 @@ struct Effector: Shape3D {
                 .subtracting {
                     for mountPoint in Self.hotendMountTopScrewHoles {
                         Self.hotendMountTopScrewPrototype.clearanceHole(recessedHead: true)
-                            .transformed(.rotation(from: .up, to: mountPoint.direction))
+                            .transformed(.rotation(from: .up, to: Direction3D(mountPoint.direction)))
                             .translated(mountPoint.top)
                             .symmetry(over: .y)
-                            //.highlighted()
+                        //.highlighted()
                     }
-
+                    
                     ThreadedHole(thread: Self.hotendMountThread, depth: Self.hotendMountThreadedLength, entryEnds: [.negative])
                     Cylinder(diameter: Self.hotendMountThread.majorDiameter, height: 2)
                         .translated(z: Self.hotendMountThreadedLength)
                         .adding {
-                            Cylinder(diameter: 4 + e.tolerance, height: 0.01)
+                            Cylinder(diameter: 4 + tolerance, height: 0.01)
                                 .rotated(y: Self.hotendMountExtruderAngle)
                                 .translated(x: Self.hotendMountExtruderXOffset, z: Self.hotendMountExtruderZOffset)
                         }
                         .convexHull()
-
+                    
                     Box([100, 100, 100])
                         .aligned(at: .centerXY)
                         .adding {
@@ -281,19 +283,19 @@ struct Effector: Shape3D {
                         .rotated(y: Self.hotendMountExtruderAngle)
                         .translated(x: Self.hotendMountExtruderXOffset, z: Self.hotendMountExtruderZOffset)
                 }
-
+            
             Circle(diameter: 3)
                 .distributed(at: [[2.2, 9.5], [12.2, 9.5], [2.2, -9.5], [12.2, -9.5]])
                 .extruded(height: 10)
                 .rotated(z: 60° + 120°)
                 .highlighted()
-                .disabled()
+                .hidden()
 
             lgxLite
                 .rotated(y: Self.hotendMountExtruderAngle)
                 .translated(x: Self.hotendMountExtruderXOffset, z: Self.hotendMountExtruderZOffset)
-                .background()
-                //.disabled()
+                .inBackground()
+            //.disabled()
         }
         .withTolerance(0.3)
         //.crossSectioned(axis: .y)
@@ -304,25 +306,31 @@ struct Effector: Shape3D {
         let direction: Vector3D
     }
 
-    var revoMicro: Geometry3D {
-        Import3D(path: "/Users/tomasf/Downloads/E3D_Revo_Micro.stl")
+    var mockModelsDirectory: URL {
+        let sourceURL = URL(filePath: #filePath)
+        let packageRoot = sourceURL.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        return packageRoot.appendingPathComponent("Mock")
+    }
+
+    var revoMicro: any Geometry3D {
+        Import(model: mockModelsDirectory.appendingPathComponent("E3D_Revo_Micro.stl"))
             .translated(x: 0.51, z: -20)
             .rotated(z: 90°)
     }
 
-    var lgxLite: Geometry3D {
-        Import3D(path: "/Users/tomasf/Downloads/EXT-LGX-LITE-V2-DUMMY.stl")
+    var lgxLite: any Geometry3D {
+        Import(model: mockModelsDirectory.appendingPathComponent("EXT-LGX-LITE-V2-DUMMY.stl"))
             .rotated(x: 90°, z: -90°)
             .translated(x: 44.0 / 2)
             .rotated(z: 180°)
             .translated(x: 6.1)
     }
 
-    var nutTest: Geometry3D {
+    var nutTest: any Geometry3D {
         Nut.hex(thread: .isoMetric(.m12, pitch: 1.5), width: 17, height: 8)
     }
 
-    var fanDuct: Geometry3D {
+    var fanDuct: any Geometry3D {
         let wallThickness = 1.0
         let baseHeight = 8.6
         let angle = 65°
@@ -340,7 +348,7 @@ struct Effector: Shape3D {
                 Rectangle(Self.fanOutletSize)
                     .aligned(at: .center)
             }
-            .extruded(height: mountThickness, topEdge: .fillet(radius: 1), method: .convexHull)
+            .extruded(height: mountThickness, topEdge: .fillet(radius: 1))
             .subtracting {
                 screwPrototype.clearanceHole(recessedHead: true)
                     .flipped(along: .z)
@@ -364,14 +372,14 @@ struct Effector: Shape3D {
                     }
                     .rotated(90°)
                     .aligned(at: .centerY, .minX)
-                    .extruded(angles: 0°..<angle)
+                    .revolved(in: 0°..<angle)
                     .rotated(x: 90°, z: -90°)
                     .aligned(at: .centerXY)
                     .translated(z: baseHeight)
 
                 Rectangle(Self.fanOutletSize + wallThickness * 2)
                     .aligned(at: .centerX)
-                    .extrudedHull(height: length) {
+                    .lofted(height: length) {
                         Rectangle(outletSize + wallThickness * 2)
                             .aligned(at: .centerX)
                     }
@@ -379,14 +387,14 @@ struct Effector: Shape3D {
                         Rectangle(Self.fanOutletSize)
                             .aligned(at: .centerX)
                             .translated(y: wallThickness)
-                            .extrudedHull(height: length + 0.002) {
+                            .lofted(height: length + 0.002) {
                                 Rectangle(outletSize)
                                     .aligned(at: .centerX)
                                     .translated(y: wallThickness)
                             }
                             .translated(z: -0.001)
 
-                        Box([100, 100, 100])
+                        Box(100)
                             .aligned(at: .centerX)
                             .rotated(x: -outletAngle)
                             .translated(z: length)
@@ -395,9 +403,6 @@ struct Effector: Shape3D {
                     .aligned(at: .maxY)
                     .rotated(x: -angle)
                     .translated(y: Self.fanOutletSize.y / 2 + wallThickness, z: baseHeight)
-                    //.disabled()
-
-
             }
     }
 }

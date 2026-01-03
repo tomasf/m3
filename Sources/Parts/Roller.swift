@@ -1,5 +1,5 @@
 import Foundation
-import SwiftSCAD
+import Cadova
 import Helical
 
 struct Roller: Shape3D {
@@ -16,7 +16,7 @@ struct Roller: Shape3D {
 
     let length: Double
 
-    var body: Geometry3D {
+    var body: any Geometry3D {
         Cylinder(diameter: Roller.outerDiameter, height: length)
             .adding {
                 Cylinder(
@@ -38,7 +38,7 @@ struct Roller: Shape3D {
                 .translated(z: length / 2 + Roller.washerThickness)
                 .symmetry(over: .z)
                 .translated(z: length / 2)
-                .background()
+                .inBackground()
             }
             .subtracting {
                 Cylinder(

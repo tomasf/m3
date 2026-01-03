@@ -1,5 +1,5 @@
 import Foundation
-import SwiftSCAD
+import Cadova
 import Helical
 
 struct BedSensor {
@@ -54,7 +54,7 @@ struct Bed: Part3D {
             }
     }
 
-    func body(_ parent: Geometry3D) -> Geometry3D {
+    func body(_ parent: Geometry3D) -> any Geometry3D {
         let sensorAreaRadius = Bed.diameter / 2 - 5
         let centerX = sensorAreaRadius - Bed.sensorFlapWidth / 2
 
@@ -107,10 +107,7 @@ struct Bed: Part3D {
         }
         .adding {
             Cylinder(diameter: BedSensor.centerClearDiameter, height: baseTopThickness)
-                .translated(
-                    x: centerX,
-                    z: baseHeight - baseTopThickness
-                )
+                .translated(x: centerX, z: baseHeight - baseTopThickness)
                 .repeated(around: .z, count: 3)
         }
     }

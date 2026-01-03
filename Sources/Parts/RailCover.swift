@@ -1,5 +1,5 @@
 import Foundation
-import SwiftSCAD
+import Cadova
 import Helical
 
 struct RailCover: Shape3D {
@@ -13,10 +13,10 @@ struct RailCover: Shape3D {
     let holeDiameter = 2.75
     let holeDepth = 5.0
 
-    var body: Geometry3D {
+    var body: any Geometry3D {
         Circle(chordLength: width, sagitta: Self.centerThickness - edgeThickness)
             .aligned(at: .minY)
-            .intersection {
+            .intersecting {
                 Rectangle(x: width, y: Self.centerThickness)
                     .aligned(at: .centerX)
             }

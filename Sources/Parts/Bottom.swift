@@ -1,5 +1,5 @@
 import Foundation
-import SwiftSCAD
+import Cadova
 import Helical
 
 struct Bottom: Shape3D {
@@ -16,9 +16,9 @@ struct Bottom: Shape3D {
     static let mountSideAnglularOffset = 9°
     static let mountSideInset = 5.8
 
-    var body: Geometry3D {
+    var body: any Geometry3D {
         baseShape
-            .extruded(height: Bottom.thickness, topEdge: .chamfer(size: baseTopChamferSize), method: .convexHull)
+            .extruded(height: Bottom.thickness, topEdge: .chamfer(depth: baseTopChamferSize))
             .subtracting {
                 Rectangle(x: stepper.size.z, y: stepper.size.x)
                     .aligned(at: .centerY, .maxX)

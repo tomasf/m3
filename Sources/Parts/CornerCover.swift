@@ -1,5 +1,5 @@
 import Foundation
-import SwiftSCAD
+import Cadova
 import Helical
 
 let cornerCoverThickness = 2.0
@@ -7,23 +7,15 @@ let cornerCoverHeight = rail.size.z - (baseHeight - railOffsetFromBottom) - topH
 
 let cornerCarriageSpaceBackWidth = rodSpacing + 12
 let baseCornerInset = baseStepperWallInset + 28
-let baseCornerShapeCircleDiameter = 96.0
+let baseCornerShapeCircleDiameter = 94.0
 
 let baseCornerShape = baseShape
-    .intersection {
+    .intersecting {
         Circle(diameter: baseCornerShapeCircleDiameter)
             .aligned(at: .left, .centerY)
             .translated(x: distanceToOuterPoint - baseCornerInset)
     }
-/*
-    .subtracting {
-        Rectangle([baseCornerShapeCircleDiameter, baseCornerShapeCircleDiameter])
-            .aligned(at: .maxX, .centerY)
-            .translated(x: distanceToOuterPoint - 40)
-
-    }
- */
-    .rounded(amount: 4)
+    .rounded(radius: 4)
 
 let cornerCoverWall = baseCornerShape
     .subtracting {
@@ -39,7 +31,7 @@ let cornerCoverWall = baseCornerShape
 
 let cornerCoverHoleOffset = Vector2D(distanceToOuterPoint - 22, 32)
 let cornerCoverCableChannelDiameter = 9.0
-let cornerCoverMountSideHoleOffset = Vector2D(distanceToOuterPoint - 29, 32)
+let cornerCoverMountSideHoleOffset = Vector2D(distanceToOuterPoint - 28.2, 32)
 let cornerCoverMountCenterHoleInset = 6.5
 let cornerCoverMountCenterHoleYOffset = 10.5
 let cornerCoverMountCenterHolePilotDepth = 10.0 - baseTopThickness
@@ -49,10 +41,10 @@ let cornerCoverMountHoleHeadDiameter = 6.0
 
 let cornerCoverShapeSolid = baseCornerShape
     .subtracting {
-        Rectangle([Effector.armOffset + deltaRadius, cornerCarriageSpaceBackWidth + 2])
+        Rectangle([Effector.armOffset + deltaRadius, cornerCarriageSpaceBackWidth + 3])
             .aligned(at: .centerY)
             .adding {
-                Circle(diameter: Bed.diameter)
+                Circle(diameter: Bed.diameter + 2)
             }
             .convexHull()
 
@@ -63,20 +55,23 @@ let cornerCoverShapeSolid = baseCornerShape
             .aligned(at: .centerY)
 
     }
-    .rounded(amount: 4) {
+    .whileMasked {
         Rectangle([baseCircleDiameterEquivalent, baseCircleDiameterEquivalent])
             .aligned(at: .maxX, .centerY)
             .translated(x: distanceToOuterPoint - 10)
+    } do: {
+        $0.rounded(radius: 4)
     }
 
+let cornerCoverWallThickness = 2.0
 let cornerCoverInnerChannelShape = cornerCoverShapeSolid
-    .offset(amount: -2, style: .round)
+    .offset(amount: -cornerCoverWallThickness, style: .round)
     .subtracting {
         Circle(diameter: cornerCoverMountHolePilotDiameter + 3)
             .translated(cornerCoverMountSideHoleOffset)
             .symmetry(over: .y)
     }
-    .rounded(amount: 1)
+    .rounded(radius: 1)
 
 let cornerCoverShape = cornerCoverShapeSolid
     .adding {
@@ -85,6 +80,19 @@ let cornerCoverShape = cornerCoverShapeSolid
     .subtracting {
         cornerCoverInnerChannelShape
 
+        let openSpaceWidth = 5.0
+        baseCornerShape.offset(amount: -cornerCoverWallThickness, style: .round)
+            .subtracting {
+                baseCornerShape.offset(amount: -openSpaceWidth - cornerCoverWallThickness, style: .round)
+            }
+            .intersecting {
+                Rectangle(x: 20, y: rodSpacing + 2*cornerCoverWallThickness)
+                    .aligned(at: .maxX, .centerY)
+                    .translated(x: distanceToOuterPoint)
+            }
+    }
+    .rounded(radius: cornerCoverWallThickness / 2 - 0.01)
+    .subtracting {
         Circle(diameter: cornerCoverMountHolePilotDiameter)
             .translated(cornerCoverMountSideHoleOffset)
             .symmetry(over: .y)
@@ -95,7 +103,7 @@ struct CornerCover: Shape3D {
 
     static let bottomThickness = 1.2
 
-    var body: Geometry3D {
+    var body: any Geometry3D {
         cornerCoverShape
             .extruded(height: height)
             .adding {
@@ -106,22 +114,24 @@ struct CornerCover: Shape3D {
                     .subtracting {
                         Circle(radius: circleRadius)
                     }
-                    .intersection { Arc(range: -50°..<50°, radius: outerShapeCornerRoundingRadius - 1) }
+                    .intersecting { Arc(range: -50°..<50°, radius: outerShapeCornerRoundingRadius - 1) }
                     .translated(x: distanceToOuterPoint - outerShapeCornerRoundingRadius)
                     .extruded(height: height)
                     .subtracting {
-                        EdgeProfile.fillet(radius: 3.0).shape()
+                        #warning("2025-08-02 double-check this")
+                        EdgeProfile.fillet(radius: 3.0).profile
                             .rotated(-90°)
                             .translated(x: circleRadius - 0.01)
-                            .extruded()
+                            .revolved()
                             .translated(x: distanceToOuterPoint - outerShapeCornerRoundingRadius, z: height + 0.01)
                     }
+                    .hidden()
 
                 // Bottom
                 Rectangle([railInset + rail.size.y - tolerance, baseCircleDiameterEquivalent])
                     .aligned(at: .centerY, .maxX)
                     .translated(x: distanceToOuterPoint)
-                    .intersection {
+                    .intersecting {
                         baseCornerShape
                     }
                     .extruded(height: Self.bottomThickness)
@@ -131,6 +141,7 @@ struct CornerCover: Shape3D {
                             .rotated(y: 60°)
                             .translated(x: distanceToOuterPoint - railInset - rail.size.y + tolerance)
                     }
+                    .hidden()
             }
             .subtracting {
                 // Bottom shape
@@ -145,7 +156,7 @@ struct CornerCover: Shape3D {
                         .translated(x: distanceToOuterPoint - railInset + tolerance)
 
                     // Belts
-                    Rectangle([carriageBeltWidth, carriageBeltThickness + 2])
+                    Rectangle([railInset + rail.size.y, carriageBeltThickness + 2])
                         .aligned(at: .maxX, .minY)
                         .adding {
                             Rectangle([railInset + rail.size.y, carriageBeltThickness + tolerance])
@@ -155,13 +166,16 @@ struct CornerCover: Shape3D {
                         .translated(x: beltCenterX, y: beltInnerYOffset - 1)
                         .symmetry(over: .y)
                 }
+                .rounded(radius: 1)
                 .extruded(height: cornerCoverMountCenterHolePilotDepth + 10)
                 .translated(z: -1)
+                .hidden()
 
                 // Center mount holes
                 Cylinder(diameter: cornerCoverMountHolePilotDiameter, height: cornerCoverMountCenterHolePilotDepth)
                     .translated(x: distanceToOuterPoint - cornerCoverMountCenterHoleInset, y: cornerCoverMountCenterHoleYOffset, z: -0.01)
                     .symmetry(over: .y)
+                    .hidden()
             }
     }
 }

@@ -1,5 +1,5 @@
 import Foundation
-import SwiftSCAD
+import Cadova
 import Helical
 
 let tolerance = 0.3
@@ -8,7 +8,7 @@ let baseCircleDiameterEquivalent = 250.0
 let outerShapeWidth = baseCircleDiameterEquivalent * 0.9251
 let outerShapeCornerRoundingRadius = baseCircleDiameterEquivalent * 0.1688
 let baseShape = ReuleauxTriangle(width: outerShapeWidth)
-    .rounded(amount: outerShapeCornerRoundingRadius)
+    .rounded(radius: outerShapeCornerRoundingRadius)
 
 let distanceToOuterPoint = baseCircleDiameterEquivalent / 2
 let distanceToEdgePivot = outerShapeWidth / 3.0.squareRoot()
@@ -80,11 +80,10 @@ let baseWithSides = base.adding {
                 .colored(.black)
         }
         .repeated(around: .z, count: 3)
-        .background()
+        .inBackground()
 }
 
 let baseContents = Duet()
-    .disabled()
     .rotated(z: 0°)
     .translated(x: -26)
     .adding {
@@ -101,240 +100,204 @@ let baseContents = Duet()
             .translated(x: distanceToOuterPoint - baseStepperWallInset - baseStepperWallThickness)
             .translated(z: stepperZFromTop)
             .repeated(around: .z, count: 3)
-            .background()
-        //.hidden()
+            .inBackground()
     }
 
-save(to: "~/Desktop/m3", environment: .defaultEnvironment.withTolerance(tolerance)) {
+
+await Project(packageRelative: "Models") {
+    Metadata(
+        title: "m3",
+        description: "A small delta printer.",
+        author: "Tomas Wincent Franzén",
+        license: "MIT"
+    )
+
+    Environment {
+        $0.tolerance = tolerance
+    }
+
     let top = Top()
 
-    top
-        .forceRendered()
-        .named("top")
+    await Model("top") {
+        top
+    }
 
-    top.topCover
-        .named("top-cover")
+    await Model("top-cover") {
+        top.topCover
+    }
 
-    top.topCoverWithCableOutlet
-        .named("top-cover-with-outlet")
+    await Model("top-cover-with-outlet") {
+        top.topCoverWithCableOutlet
+    }
 
-    top.handleCover
-        .named("handle-cover")
+    await Model("handle-cover") {
+        top.handleCover
+    }
 
-    top.rollerHolderCover
-        .named("top-roller-holder-cover")
+    await Model("top-roller-holder-cover") {
+        top.rollerHolderCover
+    }
 
-    top
-        .intersection {
-            Box([150, 100, 100])
-                .translated(
-                    x: topRollerXOffset - topRollerLength / 2 - 22,
-                    y: topRollerYOffset - 14,
-                    z: -1
-                )
-        }
-        .forceRendered()
-        .named("top-roller-holder-prototype-large")
+    await Model("top-roller-holder-prototype-large") {
+        top
+            .intersecting {
+                Box([150, 100, 100])
+                    .translated(
+                        x: topRollerXOffset - topRollerLength / 2 - 22,
+                        y: topRollerYOffset - 14,
+                        z: -1
+                    )
+            }
+    }
 
-    top
-        .intersection {
-            Box([33, 33, 100])
-                .translated(
-                    x: topRollerXOffset + topRollerLength / 2 - 4,
-                    y: topRollerYOffset - 16,
-                    z: 0
-                )
-        }
-        .named("top-roller-holder-prototype")
+    await Model("top-roller-holder-prototype") {
+        top
+            .intersecting {
+                Box([33, 33, 100])
+                    .translated(
+                        x: topRollerXOffset + topRollerLength / 2 - 4,
+                        y: topRollerYOffset - 16,
+                        z: 0
+                    )
+            }
+    }
 
-    top
-        .intersection {
-            Box([100, 79, 100])
-                .aligned(at: .centerY)
-                .translated(z: -1)
-                .translated(x: 78)
-        }
-        .named("top-corner-prototype")
+    await Model("top-corner-prototype") {
+        top
+            .intersecting {
+                Box([100, 79, 100])
+                    .aligned(at: .centerY)
+                    .translated(z: -1)
+                    .translated(x: 78)
+            }
+    }
 
-    carriageBody
-        .named("carriage")
+    await Model("top-corner-prototype-small") {
+        top
+            .intersecting {
+                Box([29.5, 25, 100])
+                    .aligned(at: .maxX, .centerY)
+                    .translated(x: distanceToOuterPoint, z: -1)
+            }
+    }
 
-    carriageCover
-        .named("carriage-cover")
+    await Model("carriage") {
+        carriageBody
+            .aligned(at: .centerXY, .bottom)
+            .colored(.aquamarine)
+    }
 
-    base
-        .named("base")
+    await Model("carriage-cover") {
+        carriageCover
+    }
 
-    baseWithSides
-        .adding {
-            cornerCover
-                .repeated(around: .z, count: 3)
-                .translated(z: baseHeight)
-            //.disabled()
+    await Model("base") {
+        base
+            .rotated(x: 180°)
+            .aligned(at: .centerXY, .bottom)
+    }
 
-            railCover
-                .rotated(z: -90°)
-                .translated(x: distanceToOuterPoint - railInset - rail.size.y - RailCover.centerThickness, z: baseHeight)
-        }
-        .rotated(x: 180°)
-        .translated(z: baseHeight - baseTopThickness)
-        .adding {
-            baseContents
-        }
-        .translated(z: -baseHeight + baseTopThickness)
-        .rotated(x: 180°)
-        .adding {
-            top
-                .translated(z: railOffsetFromBottom + rail.size.z - topHeight)
-                .forceRendered()
-                .disabled()
+    await Model("printer") {
+        baseWithSides
+            .adding {
+                cornerCover
+                    .repeated(around: .z, count: 3)
+                    .translated(z: baseHeight)
 
-            Cylinder(diameter: Bed.diameter, height: 1)
-                .translated(z: baseHeight)
+                railCover
+                    .rotated(z: -90°)
+                    .translated(x: distanceToOuterPoint - railInset - rail.size.y - RailCover.centerThickness, z: baseHeight)
+            }
+            .rotated(x: 180°)
+            .translated(z: baseHeight - baseTopThickness)
+            .adding {
+                baseContents
+            }
+            .translated(z: -baseHeight + baseTopThickness)
+            .rotated(x: 180°)
+            .adding {
+                top
+                    .translated(z: railOffsetFromBottom + rail.size.z - topHeight)
 
-            Cylinder(radius: Effector.armOffset, height: 2)
-                .adding {
-                    Cylinder(diameter: 6, height: minArmLength)
-                        .rotated(y: 90° - 20°)
-                        .translated(x: Effector.armOffset, y: rodSpacing / 2)
-                        .symmetry(over: .y)
-                        .rotated(z: 180°)
+                Cylinder(diameter: Bed.diameter, height: 1)
+                    .translated(z: baseHeight)
 
-                    Cylinder(diameter: 6, height: minArmLength)
-                        .rotated(y: 90° - 62°)
-                        .rotated(z: -57°)
-                        .translated(x: Effector.armOffset)
-                        .distributed(at: [rodSpacing / 2, -rodSpacing / 2], along: .y)
-                        .rotated(z: 180° + 120°)
-                }
-                .colored(.lightBlue)
-                .translated(x: usableBedRadius, z: baseHeight + 3 + 20)
-                .rotated(z: 180°)
-        }
-    //.crossSectioned(axis: .y, cuttingAway: .negative)
-    //.forceRendered()
-        .named("printer")
+                Effector()
+                    .rotated(z: 60°)
+                    .adding {
+                        Cylinder(diameter: 6, height: minArmLength)
+                            .rotated(y: 90° - 20°)
+                            .translated(x: Effector.armOffset, y: rodSpacing / 2)
+                            .symmetry(over: .y)
+                            .rotated(z: 180°)
 
-    base
-        .forceRendered()
-        .rotated(x: 180°)
-        .translated(z: baseHeight)
-        .adding {
-            baseContents
-                .translated(z: baseTopThickness)
-                .forceRendered()
-            Bottom()
-                .translated(z: baseHeight)
-                .forceRendered()
-                .colored(.beige, alpha: 0.5)
-        }
-    //.crossSectioned(axis: .y)
-        .adding {
-            Bottom().rotated(x: 180°).translated(x: 300)
-        }
-        .named("base-contents")
+                        Cylinder(diameter: 6, height: minArmLength)
+                            .rotated(y: 90° - 62°)
+                            .rotated(z: -57°)
+                            .translated(x: Effector.armOffset)
+                            .distributed(at: [rodSpacing / 2, -rodSpacing / 2], along: .y)
+                            .rotated(z: 180° + 120°)
+                    }
+                    .colored(.lightBlue)
+                    .translated(x: usableBedRadius, z: baseHeight + 3 + 20)
+                    .rotated(z: 180°)
+            }
+        //.crossSectioned(axis: .y, cuttingAway: .negative)
+    }
 
-    base
-        .intersection {
-            Box([baseCircleDiameterEquivalent, baseCircleDiameterEquivalent, baseCircleDiameterEquivalent])
-                .aligned(at: .centerY)
-                .translated(x: distanceToOuterPoint - 35.5, z: -1)
-        }
-        .named("base-corner-test")
+    await Model("base-contents") {
+        base
+            .rotated(x: 180°)
+            .translated(z: baseHeight)
+            .adding {
+                baseContents
+                    .translated(z: baseTopThickness)
+                Bottom()
+                    .translated(z: baseHeight)
+                    .colored(.beige, alpha: 0.5)
+            }
+        //.crossSectioned(axis: .y)
+            .adding {
+                Bottom().rotated(x: 180°).translated(x: 300)
+            }
+    }
 
-    baseWithSides
-        .adding {
-            CornerCover(height: 1)
-                .translated(z: baseHeight)
-                .colored(.lightBlue)
-        }
-        .named("base-with-sides")
+    await Model("base-corner-test") {
+        base
+            .intersecting {
+                Box([baseCircleDiameterEquivalent, baseCircleDiameterEquivalent, baseCircleDiameterEquivalent])
+                    .aligned(at: .centerY)
+                    .translated(x: distanceToOuterPoint - 35.5, z: -1)
+            }
+    }
 
-    CornerCover(height: 10.0)
-        .named("corner-cover-flat")
-    /*
-     base
-     .intersection {
-     Cylinder(diameter: 45, height: 100)
-     .translated(z: -1)
-     .translated(x: 52)
-     }
-     .aligned(at: .centerXY)
-     .translated(z: -baseHeight)
-     .rotated(x: 180°)
-     .adding {
-     Bed.sensorCover.translated(x: 40)
-     }
-     .save(to: "~/Desktop/m3/sensor-prototype")
-     */
+    await Model("base-with-sides") {
+        baseWithSides
+            .adding {
+                CornerCover(height: 1)
+                    .translated(z: baseHeight)
+                    .colored(.lightBlue)
+            }
+    }
 
-    Bed.sensorCover
-        .named("sensor-cover")
+    await Model("corner-cover-flat") {
+        CornerCover(height: 10.0)
+    }
 
-    base
-        .intersection {
-            Box([10, 70, 37])
-                .aligned(at: .centerY)
-                .translated(x: -distanceToEdge - 2, z: 6)
-        }
-        .named("front-prototype")
+    await Model("sensor-cover") {
+        Bed.sensorCover
+    }
 
-    idler
-        .named("idler")
+    await Model("front-prototype") {
+        base
+            .intersecting {
+                Box([10, 70, 37])
+                    .aligned(at: .centerY)
+                    .translated(x: -distanceToEdge - 2, z: 6)
+            }
+    }
 
-    endstopBoard
-        .named("endstop-board")
-
-    cornerCover
-        .named("corner-cover")
-
-    railCover
-        .named("rail-cover")
-
-    RailCover(length: 50)
-        .named("rail-cover-test-50")
-
-    CornerCover(height: 50)
-        .named("corner-cover-50")
-
-    Roller(length: topRollerLength - 1.0)
-        .named("roller")
-
-    Bottom()
-        .named("bottom")
-
-    baseCornerShape
-        .named("base-corner-shape")
-
-    let effector = Effector()
-    effector
-        .forceRendered()
-        .named("effector")
-
-    effector.base
-        .forceRendered()
-        .named("effector-base")
-
-    effector.base
-        .adding {
-            Box([8, 40, 0.2])
-                .aligned(at: .minX, .centerY)
-                .translated(x: Effector.armOffset + Effector.thickness / 2)
-                .repeated(around: .z, count: 3)
-        }
-        .forceRendered()
-        .named("effector-base-brim")
-
-    effector.top
-        .forceRendered()
-        .named("effector-top")
-
-    effector.fanDuct
-        .forceRendered()
-        .named("effector-fan-duct")
-
-    ArmJig()
-        .withTolerance(0.15)
-        .named("arm-jig")
+    await Model("effector") {
+        Effector()
+    }
 }
-

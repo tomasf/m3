@@ -1,5 +1,5 @@
 import Foundation
-import SwiftSCAD
+import Cadova
 import Helical
 
 let carriageBaseThickness = 3.0 // Behind belts
@@ -32,7 +32,7 @@ let carriageBeltSpaceOuterWidth = 13.3
 let railCarriageCoverThickness = 9.0
 
 let carriageBody = Box(carriageSize + .z(railCarriageCoverThickness))
-    .roundingBoxCorners(.bottom, axis: .z, radius: 3)
+    .cuttingEdgeProfile(.fillet(radius: 3), on: .bottom, along: .z)
     .translated(z: -railCarriageCoverThickness)
     .aligned(at: .centerXY)
     .adding {
@@ -48,7 +48,7 @@ let carriageBody = Box(carriageSize + .z(railCarriageCoverThickness))
             carriageArmOffset + carriageArmMountBaseDiameter / 2,
             carriageSize.z + carriageArmMountDepthOffset
         ])
-        .roundingBoxCorners(.bottom, axis: .x, radius: 2)
+        .cuttingEdgeProfile(.fillet(radius: 2), on: .bottom, along: .x)
         .aligned(at: .maxY, .centerX)
         .translated(y: carriageMaxY, z: -carriageArmMountDepthOffset)
     }
@@ -60,7 +60,6 @@ let carriageBody = Box(carriageSize + .z(railCarriageCoverThickness))
                 $0.translated(y: 10, z: -railCarriage.size.z + 0.2)
                 $0.translated(y: -10, z: -railCarriage.size.z + 0.2)
             }
-
 
         Box([railCarriage.size.y + tolerance + 1.0, railCarriage.size.x + 2, carriageArmMountDepthOffset + 1])
             .aligned(at: .maxZ, .maxY, .centerX)
@@ -80,7 +79,8 @@ let carriageBody = Box(carriageSize + .z(railCarriageCoverThickness))
             .symmetry(over: .x)
 
         // Arm mount
-        Teardrop(diameter: carriageArmHoleDiameter, style: .bridged)
+        Circle(diameter: carriageArmHoleDiameter)
+            .overhangSafe(.bridge)
             .rotated(-90°)
             .extruded(height: rodSpacing)
             .aligned(at: .centerZ)
@@ -92,7 +92,8 @@ let carriageBody = Box(carriageSize + .z(railCarriageCoverThickness))
                 carriageArmNut.nutTrap()
                     .translated(z: railCarriage.size.y / 2 + 0.8 + 0.6)
                     .symmetry(over: .z)
-                    .background()
+                    .colored(.gray, alpha: 0.6)
+                    .inBackground()
             }
             .rotated(y: 90°)
             .translated(
@@ -134,18 +135,17 @@ let carriageBody = Box(carriageSize + .z(railCarriageCoverThickness))
         // Cover mount
         ThreadedHole(thread: carriageCoverBolt.thread, depth: carriageSize.z, entryEnds: [.positive])
             .distributed(at: [carriageMinY + carriageCoverBoltOffset, carriageMaxY - carriageCoverBoltOffset], along: .y)
-            .disabled()
+            .hidden()
     }
-    .forceRendered()
     .withTolerance(tolerance)
 
 let carriageCoverThickness = 2.6
 let carriageCover = Rectangle(carriageSize.xy + [0, carriageCoverThickness])
-    .roundingRectangleCorners(.bottom, radius: 3)
+    .cuttingEdgeProfile(.fillet(radius: 3), on: .bottom)
     .aligned(at: .center)
     .translated(y: carriageCoverThickness / 2)
-    .extruded(height: carriageCoverThickness, topEdge: .chamfer(size: carriageCoverThickness), method: .convexHull)
-    .intersection {
+    .extruded(height: carriageCoverThickness, topEdge: .chamfer(depth: carriageCoverThickness))
+    .intersecting {
         Box(carriageSize).aligned(at: .centerXY)
     }
     .subtracting {
