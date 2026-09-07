@@ -1,8 +1,8 @@
-import Foundation
 import Cadova
-import Helical
 
-struct Roller: Shape3D {
+/// A filament spool roller: a printed tube running on a bearing at each end, with the bearings
+/// held by screws driven into the tube's ends.
+struct Roller: Geometry3D {
     static let bearingDiameter = 10.0
     static let bearingThickness = 4.0
     static let screwHeadDiameter = 5.5
@@ -17,35 +17,28 @@ struct Roller: Shape3D {
     let length: Double
 
     var body: any Geometry3D {
-        Cylinder(diameter: Roller.outerDiameter, height: length)
+        Cylinder(diameter: Self.outerDiameter, height: length)
             .adding {
-                Cylinder(
-                    diameter: Roller.washerDiameter,
-                    height: Roller.washerThickness
-                )
-                .translated(z: length)
+                Cylinder(diameter: Self.washerDiameter, height: Self.washerThickness)
+                    .translated(z: length)
 
+                // Bearing and screw head, shown for reference at both ends
                 Stack(.z, alignment: .center) {
-                    Cylinder(
-                        diameter: Roller.bearingDiameter,
-                        height: Roller.bearingThickness
-                    )
-                    Cylinder(
-                        diameter: Roller.screwHeadDiameter,
-                        height: Roller.screwHeadThickness
-                    )
+                    Cylinder(diameter: Self.bearingDiameter, height: Self.bearingThickness)
+                    Cylinder(diameter: Self.screwHeadDiameter, height: Self.screwHeadThickness)
                 }
-                .translated(z: length / 2 + Roller.washerThickness)
+                .translated(z: length / 2 + Self.washerThickness)
                 .symmetry(over: .z)
                 .translated(z: length / 2)
                 .inBackground()
             }
             .subtracting {
+                // Screw pilot holes
                 Cylinder(
-                    diameter: Roller.screwPilotHoleDiameter,
-                    height: Roller.screwPilotHoleDepth + Roller.washerThickness + 1
+                    diameter: Self.screwPilotHoleDiameter,
+                    height: Self.screwPilotHoleDepth + Self.washerThickness + 1
                 )
-                .translated(z: length / 2 - Roller.screwPilotHoleDepth)
+                .translated(z: length / 2 - Self.screwPilotHoleDepth)
                 .symmetry(over: .z)
                 .translated(z: length / 2)
             }

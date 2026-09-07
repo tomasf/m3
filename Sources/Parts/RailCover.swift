@@ -1,38 +1,36 @@
-import Foundation
 import Cadova
-import Helical
 
-struct RailCover: Shape3D {
-    let length: Double
-    static let standardLength = cornerCoverHeight
-
-    let width = railCarriage.size.y + 0.5
+/// The curved strip that snaps over the exposed length of a linear rail between the base and the
+/// top, keeping dust off the raceway.
+struct RailCover: Geometry3D {
+    static let standardLength = CornerCover.standardHeight
     static let centerThickness = 6.0
-    let edgeThickness = 2.0
 
-    let holeDiameter = 2.75
-    let holeDepth = 5.0
+    static let width = LinearRailCarriage.size.y + 0.5
+    static let edgeThickness = 2.0
+    static let holeDiameter = 2.75
+    static let holeDepth = 5.0
+
+    let length: Double
 
     var body: any Geometry3D {
-        Circle(chordLength: width, sagitta: Self.centerThickness - edgeThickness)
+        Circle(chordLength: Self.width, sagitta: Self.centerThickness - Self.edgeThickness)
             .aligned(at: .minY)
             .intersecting {
-                Rectangle(x: width, y: Self.centerThickness)
+                Rectangle(x: Self.width, y: Self.centerThickness)
                     .aligned(at: .centerX)
             }
             .extruded(height: length)
-            .translated(z: baseHeight + 0.2)
+            .translated(z: Base.height + 0.2)
             .subtracting {
-                Cylinder(diameter: holeDiameter, height: holeDepth + 1)
+                // Clears the rail's own mounting screws
+                Cylinder(diameter: Self.holeDiameter, height: Self.holeDepth + 1)
                     .translated(z: -1)
                     .rotated(x: 90°)
                     .translated(y: Self.centerThickness)
-                    .translated(z: railOffsetFromBottom + rail.holeDistance / 2)
-                    .repeated(along: .z, in: 0..<rail.size.z, step: rail.holeDistance)
+                    .translated(z: Motion.railOffsetFromBottom + LinearRail.holeDistance / 2)
+                    .repeated(along: .z, in: 0..<LinearRail.size.z, step: LinearRail.holeDistance)
             }
             .aligned(at: .bottom)
     }
 }
-
-let railCover = RailCover(length: RailCover.standardLength)
-

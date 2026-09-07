@@ -1,564 +1,666 @@
-import Foundation
 import Cadova
 import Helical
 
-let topOuterWallThickness = 4.0
-let topHeight = 20.0
+/// The ring that caps the three towers. It carries the belt idlers and the rail's upper mounts,
+/// houses the endstop boards and an LED strip, and holds the filament spool on a pair of rollers.
+///
+/// The top is modeled with z = 0 at its underside, so it can be dropped straight onto the towers.
+struct Top: Geometry3D {
+    static let height = 20.0
+    static let outerWallThickness = 4.0
+    static let coverThickness = 2.0
+    static let filletRadius = 2.0
 
-let topCoverThickness = 2.0
-let topFilletRadius = 2.0
+    static let innerShape = Frame.shape.offset(amount: -outerWallThickness, style: .round)
 
-//let topCornerAreaRadius = 40.0
+    // MARK: - Idler
 
-let beltCenterInset = railInset + rail.size.y - railCarriage.offsetFromRail - railCarriage.size.z - carriageBaseThickness - carriageBeltWidth / 2
+    static let idlerHoleDiameter = 5.5
+    static let idlerCenterZ = height / 2 - 2.2
+    static let idlerHolderRingDiameter = idlerHoleDiameter + 2.0
+    static let idlerHolderRingLength = 1.0
+    static let idlerSpaceLength = Idler.width + 2 * idlerHolderRingLength + 0.5
+    static let idlerSpaceWidth = Idler.outerDiameter + 4.0
 
-let topIdlerHoleDiameter = 5.5
-let topIdlerCenterZ = topHeight / 2 - 2.2
-let topIdlerHolderRingDiameter = topIdlerHoleDiameter + 2.0
-let topIdlerHolderRingLength = 1.0
+    static let idlerBoltLength = 16.0
+    static let idlerBolt = Bolt.phillipsCountersunk(.m5, length: idlerBoltLength)
 
-let topRailMountZ = topHeight / 2
+    // MARK: - Rail
 
-let topIdlerSpaceLength = idler.width + 2 * topIdlerHolderRingLength + 0.5
-let topIdlerSpaceWidth = idler.outerDiameter + 4.0
+    static let railMountZ = height / 2
+    static let railToNutTrapDistance = 1.0
+    static let railBoltHeadDiameter = 6.2
+    static let railBoltHeadLength = 3.5
 
-let topIdlerBoltLength = 16.0
-let topIdlerBolt = Bolt.phillipsCountersunk(.m5, length: topIdlerBoltLength)
+    /// X of the rail's nut trap, just inboard of the rail's back face.
+    static let railNutTrapX = Frame.outerPointDistance
+        - Motion.railInset
+        - LinearRail.size.y
+        - railToNutTrapDistance
 
-let topRailToNutTrapDistance = 1.0
+    // MARK: - Handle and LED strip
 
-let topHandleDiameter = 22.0
-let topHandleXOffset = -20.0
-let topLEDStripSize = Vector3D(152, 12.5, 4.6)
-let topLEDStripExpansion = 1.0
+    static let handleDiameter = 22.0
+    static let handleXOffset = -20.0
+    static let handleBottomWidth = (handleDiameter / 2) * 2.squareRoot()
+    static let handleCoverThickness = 0.6
 
-let topCoverMountPositions: [Vector2D] = [[-7, 14], [-32, 27]]
-let topCoverMountBoltEquivalent = Bolt.phillipsCountersunk(.m3, length: 9)
-let topCoverMountPilotHoleDiameter = 2.65
-let topCoverMountPilotHoleDepth = 9.0
+    static let ledStripSize = Vector3D(152, 12.5, 4.6)
+    /// The strip's channel widens slightly towards its opening so the strip can be pushed in.
+    static let ledStripExpansion = 1.0
 
-let topCoverMountBottomThickness = 4.0
+    // MARK: - Cover mounts
 
-let topRollerLength = 75.0
-let topRollerYOffset = 58.0
-let topRollerXOffset = topRollerLength / 2 - 9.0
+    static let coverMountPositions: [Vector2D] = [[-7, 14], [-32, 27]]
+    static let coverMountBoltEquivalent = Bolt.phillipsCountersunk(.m3, length: 9)
+    static let coverMountPilotHoleDiameter = 2.65
+    static let coverMountPilotHoleDepth = 9.0
+    static let coverMountBottomThickness = 4.0
 
-let holderWallThickness = 2.0
+    // MARK: - Spool rollers
 
-struct Top: Shape3D {
-    static let rollerHolderAxisZ = topHeight - rollerBearingDiameter / 2
+    static let rollerLength = 75.0
+    static let rollerYOffset = 58.0
+    static let rollerXOffset = rollerLength / 2 - 9.0
+    static let rollerHolderWallThickness = 2.0
 
-    let topFarSideRollerHolderCornerRadius = 4.0
-    let topFarSideRollerHolderSize = Vector3D(
-        x: Roller.bearingThickness + Roller.screwHeadThickness + Roller.washerThickness + holderWallThickness + 30,
-        y: Roller.bearingDiameter + 2 * holderWallThickness + 17.5,
-        z: Roller.bearingDiameter + holderWallThickness + 3
+    static var rollerBearingDiameter: Double {
+        @Environment(\.tolerance) var tolerance
+        return Roller.bearingDiameter + tolerance * 2
+    }
+
+    /// Height of the rollers' axis above the top's underside.
+    static var rollerHolderAxisZ: Double {
+        height - rollerBearingDiameter / 2
+    }
+
+    // The roller holder on the far side from the handle is tall enough to need a separate printed
+    // cover, so the bearing pocket can be closed after assembly.
+    static let farHolderCornerRadius = 4.0
+    static let farHolderSize = Vector3D(
+        x: Roller.bearingThickness + Roller.screwHeadThickness + Roller.washerThickness
+            + rollerHolderWallThickness + 30,
+        y: Roller.bearingDiameter + 2 * rollerHolderWallThickness + 17.5,
+        z: Roller.bearingDiameter + rollerHolderWallThickness + 3
     )
-    let topFarSideRollerHolderOffset = Vector3D(y: -(Roller.bearingDiameter + 2 * holderWallThickness + tolerance + 5) / 2 - 2)
 
-    static let innerShape = baseShape.offset(amount: -topOuterWallThickness, style: .round)
-
-    var unconstrainedRollerHolderMask: any Geometry2D {
-        Rectangle(topFarSideRollerHolderSize.xy)
-            .cuttingEdgeProfile(.fillet(radius: topFarSideRollerHolderCornerRadius))
-            .translated(topFarSideRollerHolderOffset.xy)
-            .translated(x: topRollerXOffset + topRollerLength / 2, y: topRollerYOffset)
+    static var farHolderOffset: Vector3D {
+        @Environment(\.tolerance) var tolerance
+        return Vector3D(
+            y: -(Roller.bearingDiameter + 2 * rollerHolderWallThickness + tolerance + 5) / 2 - 2
+        )
     }
 
-    var farSideRollerHolderMask: any Geometry2D {
-        unconstrainedRollerHolderMask
-            .intersecting { baseShape }
+    /// The z at which the far holder's cover parts from the top.
+    static var farHolderBaseHeight: Double {
+        rollerHolderAxisZ + rollerBearingDiameter / 2
     }
 
-    func farSideRollerHolderCoverMask(inset: Double = 0) -> any Geometry3D {
-        unconstrainedRollerHolderMask
+    static let farHolderCoverMountPositions: [Vector2D] = [[4.5, 4.5], [4.5, 18.5], [20.8, 4.5]]
+    static let farHolderCoverPilotHoleDiameter = 2.65
+    static let farHolderCoverPilotHoleDepth = 8.0
+
+    /// Footprint of the far roller holder, before it is trimmed to the frame.
+    static var farHolderMask: any Geometry2D {
+        Rectangle(farHolderSize.xy)
+            .cuttingEdgeProfile(.fillet(radius: farHolderCornerRadius))
+            .translated(farHolderOffset.xy)
+            .translated(x: rollerXOffset + rollerLength / 2, y: rollerYOffset)
+    }
+
+    static var trimmedFarHolderMask: any Geometry2D {
+        farHolderMask
+            .intersecting { Frame.shape }
+    }
+
+    /// The volume the far holder's cover occupies, optionally shrunk by `inset`.
+    static func farHolderCoverMask(inset: Double = 0) -> any Geometry3D {
+        farHolderMask
             .offset(amount: -inset, style: .round)
-            .extruded(height: topHeight)
-            .translated(z: Self.farSideRollerHolderBaseHeight)
+            .extruded(height: height)
+            .translated(z: farHolderBaseHeight)
     }
 
-    static let rollerBearingDiameter = Roller.bearingDiameter + tolerance * 2
-    static let farSideRollerHolderBaseHeight = rollerHolderAxisZ + rollerBearingDiameter / 2
+    // MARK: - Body
 
     var body: any Geometry3D {
-        baseShape.subtracting { Self.innerShape }
+        @Environment(\.tolerance) var tolerance
+
+        Frame.shape
+            .subtracting { Self.innerShape }
             .adding {
-                baseCornerShape
+                Frame.cornerShape
                     .repeated(count: 3)
 
-                farSideRollerHolderMask
+                Self.trimmedFarHolderMask
                     .symmetry(over: .y)
             }
-            .extruded(height: topHeight + topCoverThickness, topEdge: .fillet(radius: topFilletRadius))
+            .extruded(height: Self.height + Self.coverThickness, topEdge: .fillet(radius: Self.filletRadius))
             .subtracting {
-                // Corner bottom chamfer
-                #warning("2025-08-02 double-check this")
-                EdgeProfile.overhangFillet(radius: baseTopChamferSize).profile
-                    .flipped(along: .x)
-                    .translated(x: baseCornerShapeCircleDiameter / 2 + 0.01)
-                    .revolved()
-                    .intersecting {
-                        Arc(range: -50°..<50°, diameter: baseCornerShapeCircleDiameter + 1)
-                            .rotated(180°)
-                            .extruded(height: topHeight)
-                    }
-                    .translated(x: distanceToOuterPoint - baseCornerInset + baseCornerShapeCircleDiameter / 2, z: -0.01)
-                    .subtracting { cornerCoverShapeSolid.extruded(height: topHeight).translated(z: -1) }
-                    .repeated(around: .z, count: 3)
-
-                unconstrainedRollerHolderMask
-                    .extruded(height: topHeight)
-                    .subtracting {
-                        unconstrainedRollerHolderMask.extruded(
-                            height: topHeight,
-                            bottomEdge: .overhangFillet(radius: baseTopChamferSize * 4)
-                        )
-                    }
-                    .intersecting { Self.innerShape.extruded(height: baseTopChamferSize * 4) }
-                    .symmetry(over: .y)
+                Self.cornerBottomChamfer
+                Self.farHolderUndercut
             }
             .adding {
-                // Handle
-                let handleZOffset = topHandleDiameter / 2 / 2.squareRoot()
-                Cylinder(diameter: topHandleDiameter, height: baseCircleDiameterEquivalent)
-                    .aligned(at: .centerZ)
-                    .rotated(x: 90°)
-                    .translated(x: topHandleXOffset, z: handleZOffset)
-                    .intersecting {
-                        baseShape.extruded(height: topHeight)
-                    }
+                Self.handle
+            }
+            .subtracting {
+                // The far holder's cover is printed separately, so leave its volume open
+                Self.farHolderCoverMask(inset: -tolerance)
+                    .symmetry(over: .y)
 
-                    .adding {
-                        // Roller holders, handle side
-                        let rollerHolderDiameter = Roller.bearingDiameter + 2 * holderWallThickness
-                        Circle(diameter: rollerHolderDiameter)
-                            .extruded(
-                                height: topHandleDiameter / 2,
-                                topEdge: .fillet(radius: 1.5),
-                                bottomEdge: .fillet(radius: rollerHolderDiameter / 2)
-                            )
-                            .rotated(y: 90°)
-                            .aligned(at: .maxX)
-                            .translated(x: -topRollerLength / 2, y: topRollerYOffset, z: Self.rollerHolderAxisZ)
-                            .symmetry(over: .y)
-                            .translated(x: topRollerXOffset)
+                Self.farHolderPockets(tolerance: tolerance)
 
-                        Roller(length: topRollerLength - 2)
-                            .rotated(y: 90°)
-                            .translated(x: -8, y: topRollerYOffset, z: Self.rollerHolderAxisZ)
-                            .symmetry(over: .y)
-                            .inBackground()
-                    }
+                Self.coverRecesses(tolerance: tolerance)
 
-                // Filament roll
+                Self.towerCutouts(tolerance: tolerance)
+                    .repeated(around: .z, count: 3)
+            }
+            .adding {
+                Self.idlerHolderRings
+                    .repeated(around: .z, count: 3)
+            }
+            .subtracting {
+                Self.towerBoltCutouts
+                    .repeated(around: .z, count: 3)
+
+                Self.ledStripChannel
+                Self.handleSideRollerPockets(tolerance: tolerance)
+            }
+            .adding {
+                Self.assemblyPreview
+            }
+    }
+
+    // MARK: - Shell details
+
+    /// A rounded relief where the base's chamfer meets each corner, so the two meet flush.
+    private static var cornerBottomChamfer: any Geometry3D {
+        // TODO: 2025-08-02 — double-check this against the current EdgeProfile semantics.
+        EdgeProfile.overhangFillet(radius: Base.topChamferSize).profile
+            .flipped(along: .x)
+            .translated(x: Frame.cornerCircleDiameter / 2 + 0.01)
+            .revolved()
+            .intersecting {
+                Arc(range: -50°..<50°, diameter: Frame.cornerCircleDiameter + 1)
+                    .rotated(180°)
+                    .extruded(height: height)
+            }
+            .translated(
+                x: Frame.outerPointDistance - Frame.cornerInset + Frame.cornerCircleDiameter / 2,
+                z: -0.01
+            )
+            .subtracting {
+                CornerCover.solidShape.extruded(height: height).translated(z: -1)
+            }
+            .repeated(around: .z, count: 3)
+    }
+
+    /// Blends the underside of the far roller holder into the shell so it prints without support.
+    private static var farHolderUndercut: any Geometry3D {
+        farHolderMask
+            .extruded(height: height)
+            .subtracting {
+                farHolderMask.extruded(
+                    height: height,
+                    bottomEdge: .overhangFillet(radius: Base.topChamferSize * 4)
+                )
+            }
+            .intersecting { innerShape.extruded(height: Base.topChamferSize * 4) }
+            .symmetry(over: .y)
+    }
+
+    // MARK: - Handle and rollers
+
+    /// The carrying handle, and the spool roller holders on the handle side.
+    private static var handle: any Geometry3D {
+        // Sitting the cylinder's axis this far up puts its widest point at the top surface
+        let handleZOffset = handleDiameter / 2 / 2.squareRoot()
+        let rollerHolderDiameter = Roller.bearingDiameter + 2 * rollerHolderWallThickness
+
+        return Cylinder(diameter: handleDiameter, height: Frame.circleDiameterEquivalent)
+            .aligned(at: .centerZ)
+            .rotated(x: 90°)
+            .translated(x: handleXOffset, z: handleZOffset)
+            .intersecting {
+                Frame.shape.extruded(height: height)
+            }
+            .adding {
+                Circle(diameter: rollerHolderDiameter)
+                    .extruded(
+                        height: handleDiameter / 2,
+                        topEdge: .fillet(radius: 1.5),
+                        bottomEdge: .fillet(radius: rollerHolderDiameter / 2)
+                    )
+                    .rotated(y: 90°)
+                    .aligned(at: .maxX)
+                    .translated(x: -rollerLength / 2, y: rollerYOffset, z: rollerHolderAxisZ)
+                    .symmetry(over: .y)
+                    .translated(x: rollerXOffset)
+
+                Roller(length: rollerLength - 2)
+                    .rotated(y: 90°)
+                    .translated(x: -8, y: rollerYOffset, z: rollerHolderAxisZ)
+                    .symmetry(over: .y)
+                    .inBackground()
+
+                // A full spool, to check it clears the frame. Disabled by default.
                 Cylinder(diameter: 200, height: 67)
                     .rotated(y: 90°)
                     .translated(x: -5, z: 97)
                     .inBackground()
                     .hidden()
             }
-            .subtracting {
-                // Subtract far side roller holder covers
-                farSideRollerHolderCoverMask(inset: -tolerance)
-                    .symmetry(over: .y)
+    }
 
-                Union {
-                    Cylinder(diameter: Self.rollerBearingDiameter, height: Roller.bearingThickness + tolerance)
-                        .rotated(y: 90°)
-                        .translated(x: -0.01, z: Self.rollerHolderAxisZ)
-                        .cloned {
-                            $0.translated(z: topFarSideRollerHolderSize.z)
-                        }
-                        .convexHull()
+    /// Bearing and screw-head pockets in the handle-side roller holders.
+    private static func handleSideRollerPockets(tolerance: Double) -> any Geometry3D {
+        Union {
+            Circle(diameter: rollerBearingDiameter)
+                .overhangSafe(.bridge)
+                .rotated(90°)
+                .extruded(height: Roller.bearingThickness + tolerance)
+                .rotated(y: 90°)
+                .translated(x: -0.01, z: rollerHolderAxisZ)
 
-                    Cylinder(diameter: Roller.screwHeadDiameter + tolerance, height: Roller.screwHeadThickness + tolerance)
-                        .rotated(y: 90°)
-                        .translated(x: Roller.bearingThickness - 0.01, z: Self.rollerHolderAxisZ)
-                        .cloned {
-                            $0.translated(z: topFarSideRollerHolderSize.z)
-                        }
-                        .convexHull()
+            Circle(diameter: Roller.screwHeadDiameter + tolerance)
+                .overhangSafe(.bridge)
+                .rotated(90°)
+                .extruded(height: Roller.screwHeadThickness + tolerance)
+                .rotated(y: 90°)
+                .translated(x: Roller.bearingThickness - 0.01, z: rollerHolderAxisZ)
+        }
+        .translated(x: rollerLength / 2, y: rollerYOffset)
+        .symmetry(over: .y)
+        .flipped(along: .x)
+        .translated(x: rollerXOffset)
+    }
 
-                    // Mount holes
-                    for offset in rollerHolderCoverMountPositions {
-                        Cylinder(diameter: rollerHolderCoverPilotHoleDiameter, height: rollerHolderCoverPilotHoleDepth)
-                            .translated(z: Self.farSideRollerHolderBaseHeight - rollerHolderCoverPilotHoleDepth + 0.01)
-                            .translated(topFarSideRollerHolderOffset)
-                            .translated(.init(offset))
-                    }
+    /// Bearing and screw-head pockets in the far roller holder, plus its cover's pilot holes.
+    /// The pockets are hulled upward so they open to the cover's parting plane.
+    private static func farHolderPockets(tolerance: Double) -> any Geometry3D {
+        Union {
+            Cylinder(diameter: rollerBearingDiameter, height: Roller.bearingThickness + tolerance)
+                .rotated(y: 90°)
+                .translated(x: -0.01, z: rollerHolderAxisZ)
+                .cloned {
+                    $0.translated(z: farHolderSize.z)
                 }
-                .translated(x: topRollerXOffset + topRollerLength / 2, y: topRollerYOffset)
-                .symmetry(over: .y)
+                .convexHull()
 
-                // Subtract corner covers
-                topCoverBaseCornerShape
-                    .offset(amount: tolerance, style: .round)
-                    .repeated(count: 3)
-                    .subtracting {
-                        cableOutletShape
-                            .subtracting(Self.innerShape)
-                            .rotated(-120°)
-                            .offset(amount: -tolerance, style: .round)
-                    }
-                    .extruded(height: topCoverThickness + 1)
-                    .translated(z: topHeight)
-
-                Union {
-                    // Idler space
-                    Rectangle([topIdlerSpaceLength, topIdlerSpaceWidth])
-                        .cuttingEdgeProfile(.fillet(radius: 2), on: [.topRight, .bottomRight, .bottomLeft])
-                        .aligned(at: .center)
-                        .translated(x: distanceToOuterPoint - beltCenterInset)
-                    //.intersecting { topInnerShape }
-                        .extruded(height: topHeight + 2)
-                        .translated(z: -1)
-
-                    // Rail
-                    Box(x: rail.size.y + tolerance, y: rail.size.x + tolerance, z: topHeight
-                        + 2)
-                    .aligned(at: .centerXY)
-                    .translated(x: distanceToOuterPoint - railInset - rail.size.y / 2, z: -1)
-
-                    let endstopBoardOffset = Vector2D(-1, -0.01)
-                    let endstopBoardHoleDiameter = 2.8
-
-                    // Endstop board
-                    Rectangle(endstopBoard.size.xy + tolerance + 0.2)
-                        .cuttingEdgeProfile(.fillet(radius: endstopBoard.holeInset), on: .topRight)
-                        .rotated(180°)
-                        .aligned(at: .centerX, .minY)
-                        .extruded(height: topHeight)
-                        .adding {
-                            Box(endstopBoard.endstopSize + [0,0,1])
-                                .aligned(at: .centerX, .minY, .maxZ)
-                                .translated(z: 0.01)
-
-                            Cylinder(diameter: endstopBoardHoleDiameter, height: topHeight)
-                                .translated(
-                                    x: endstopBoard.size.x / 2 - endstopBoard.holeInset,
-                                    y: endstopBoard.holeInset,
-                                    z: -endstopBoard.endstopSize.z + 0.4
-                                )
-                                .symmetry(over: .x)
-                        }
-                        .aligned(at: .maxX)
-                        .translated(
-                            x: distanceToOuterPoint - beltCenterInset + endstopBoardOffset.x,
-                            y: topIdlerSpaceWidth / 2 + endstopBoardOffset.y,
-                            z: endstopBoard.endstopSize.z
-                        )
-
-                    // Corner cover cable channel
-                    cornerCoverInnerChannelShape
-                        .extruded(height: topHeight + 1)
-
-                    Cylinder(diameter: cornerCoverMountHoleClearanceDiameter, height: topHeight + 1)
-                        .translated(z: -0.01)
-                        .adding {
-                            Cylinder(diameter: cornerCoverMountHoleHeadDiameter, height: topHeight)
-                                .translated(z: topCoverMountBottomThickness)
-                        }
-                        .translated(.init(cornerCoverMountSideHoleOffset))
-                        .symmetry(over: .y)
-
-                    for offset in topCoverMountPositions {
-                        Cylinder(diameter: topCoverMountPilotHoleDiameter, height: topCoverMountPilotHoleDepth + 1)
-                            .translated(x: distanceToOuterPoint, z: topHeight - topCoverMountPilotHoleDepth)
-                            .translated(.init(offset))
-                            .symmetry(over: .y)
-                            //.highlighted()
-                    }
-                }
-                .repeated(around: .z, count: 3)
+            Cylinder(
+                diameter: Roller.screwHeadDiameter + tolerance,
+                height: Roller.screwHeadThickness + tolerance
+            )
+            .rotated(y: 90°)
+            .translated(x: Roller.bearingThickness - 0.01, z: rollerHolderAxisZ)
+            .cloned {
+                $0.translated(z: farHolderSize.z)
             }
+            .convexHull()
+
+            for offset in farHolderCoverMountPositions {
+                Cylinder(
+                    diameter: farHolderCoverPilotHoleDiameter,
+                    height: farHolderCoverPilotHoleDepth
+                )
+                .translated(z: farHolderBaseHeight - farHolderCoverPilotHoleDepth + 0.01)
+                .translated(farHolderOffset)
+                .translated(.init(offset))
+            }
+        }
+        .translated(x: rollerXOffset + rollerLength / 2, y: rollerYOffset)
+        .symmetry(over: .y)
+    }
+
+    /// The recesses the three corner covers drop into, keeping the cable outlet solid.
+    private static func coverRecesses(tolerance: Double) -> any Geometry3D {
+        coverBaseCornerShape
+            .offset(amount: tolerance, style: .round)
+            .repeated(count: 3)
+            .subtracting {
+                cableOutletShape
+                    .subtracting(innerShape)
+                    .rotated(-120°)
+                    .offset(amount: -tolerance, style: .round)
+            }
+            .extruded(height: coverThickness + 1)
+            .translated(z: height)
+    }
+
+    /// The LED strip's channel, with a cable run out to the handle.
+    private static var ledStripChannel: any Geometry3D {
+        Box([3, 30, ledStripSize.z])
+            .translated(x: -ledStripSize.y / 2, y: ledStripSize.x / 2 - 1)
             .adding {
-                Cylinder(diameter: topIdlerHolderRingDiameter, height: topIdlerHolderRingLength)
-                    .rotated(y: 90°)
-                    .cloned {
-                        $0.translated(x: -topIdlerHolderRingLength, z: -topIdlerHolderRingLength)
-                    }
-                    .convexHull()
-                    .translated(x: -topIdlerSpaceLength / 2)
-                    .symmetry(over: .x)
-                    .translated(x: distanceToOuterPoint - beltCenterInset)
-                    .translated(z: topIdlerCenterZ)
-                    .repeated(around: .z, count: 3)
-            }
-            .subtracting {
-                // For each corner:
-                Union {
-                    // Idler bolt and rail bolt
-                    let end = distanceToOuterPoint - beltCenterInset + topIdlerSpaceLength / 2 + 1.0
-                    let start = end - topIdlerBoltLength - 0.1
-
-                    Cylinder(diameter: topIdlerHoleDiameter, height: end-start)
-                        .rotated(y: 90°)
-                        .cloned {
-                            $0.translated(z: topHeight)
-                        }
-                        .convexHull()
-                        .translated(x: start, z: topIdlerCenterZ)
-
-                    /*
-                    // Idler bolt visualization
-                    topIdlerBolt
-                        .rotated(y: 90°)
-                        .aligned(at: .right)
-                        .translated(x: end - 0.1, z: topIdlerCenterZ)
-                        .inBackground()
-                        .hidden()
-*/
-                    // Idler visualization
-                    idler
-                        .aligned(at: .centerZ)
-                        .rotated(y: 90°)
-                        .translated(x: distanceToOuterPoint - beltCenterInset, z: topIdlerCenterZ)
-                        .inBackground()
-
-                    // Rail nut trap
-                    let nutTrapX = distanceToOuterPoint - railInset - rail.size.y - topRailToNutTrapDistance
-
-                    Box([railNutTrapThickness, railNutTrapWidth, topHeight])
-                        .aligned(at: .centerY, .maxX)
-                        .translated(z: -railNutTrapWidth / 2)
-                        .translated(x: nutTrapX, z: topRailMountZ)
-
-                    Circle(diameter: rail.holeDiameter)
-                        .overhangSafe(.bridge)
-                        .rotated(90°)
-                        .extruded(height: 10)
-                        .rotated(y: 90°)
-                        .translated(x: nutTrapX - 5, z: topRailMountZ)
-                        //.highlighted()
-
-                    // Rail bolt head
-                    let railBoltHeadDiameter = 6.2
-                    let railBoltHeadLength = 3.5
-                    Cylinder(diameter: railBoltHeadDiameter, height: railBoltHeadLength)
-                        .rotated(y: 90°)
-                        .cloned { $0.translated(z: topHeight) }
-                        .convexHull()
-                        .cloned {
-                            $0.translated(x: railBoltHeadLength - 1, z: railBoltHeadDiameter / 2)
-                        }
-                        .translated(x: distanceToOuterPoint - railInset - 0.1, z: topRailMountZ)
-
-                    // Idler bolt head
-                    //Cylinder(diameter: idlerBoltHeadDiameter, height: topIdlerBolt.headShape.height + 0.4)
-                    topIdlerBolt.headShape
-                        .scaled(1.2)
-                        .rotated(y: 90°)
-                        .cloned { $0.translated(z: topHeight) }
-                        .convexHull()
-                        .translated(x: end - topIdlerBoltLength - 0.2, z: topIdlerCenterZ)
-                        .hidden()
-                }
-                .repeated(around: .z, count: 3)
-
-                // LED strip cable channel
-                Box([3, 30, topLEDStripSize.z])
-                    .translated(x: -topLEDStripSize.y / 2, y: topLEDStripSize.x / 2 - 1)
-                    .adding {
-                        Rectangle(topLEDStripSize.xy)
+                Rectangle(ledStripSize.xy)
+                    .aligned(at: .center)
+                    .lofted(height: ledStripSize.z) {
+                        Rectangle([ledStripSize.x, ledStripSize.y + ledStripExpansion])
                             .aligned(at: .center)
-                            .lofted(height: topLEDStripSize.z) {
-                                Rectangle([topLEDStripSize.x, topLEDStripSize.y + topLEDStripExpansion])
-                                    .aligned(at: .center)
-                            }
-                            .rotated(z: 90°)
                     }
-                    .translated(x: topHandleXOffset, z: -0.01)
+                    .rotated(z: 90°)
+            }
+            .translated(x: handleXOffset, z: -0.01)
+    }
 
-                // Roll holder negative, handle side
-                Union {
-                    Circle(diameter: Self.rollerBearingDiameter)
-                        .overhangSafe(.bridge)
-                        .rotated(90°)
-                        .extruded(height: Roller.bearingThickness + tolerance)
-                        .rotated(y: 90°)
-                        .translated(x: -0.01, z: Self.rollerHolderAxisZ)
+    // MARK: - Tower features
 
-                    Circle(diameter: Roller.screwHeadDiameter + tolerance)
-                        .overhangSafe(.bridge)
-                        .rotated(90°)
-                        .extruded(height: Roller.screwHeadThickness + tolerance)
-                        .rotated(y: 90°)
-                        .translated(x: Roller.bearingThickness-0.01, z: Self.rollerHolderAxisZ)
-                }
-                .translated(x: topRollerLength / 2, y: topRollerYOffset)
+    /// Everything one tower takes out of the top. Applied once, then repeated about z.
+    @GeometryBuilder3D
+    private static func towerCutouts(tolerance: Double) -> any Geometry3D {
+        // Space for the idler
+        Rectangle([idlerSpaceLength, idlerSpaceWidth])
+            .cuttingEdgeProfile(.fillet(radius: 2), on: [.topRight, .bottomRight, .bottomLeft])
+            .aligned(at: .center)
+            .translated(x: Frame.outerPointDistance - Motion.beltCenterInset)
+            .extruded(height: height + 2)
+            .translated(z: -1)
+
+        // Slot the rail passes through
+        Box(
+            x: LinearRail.size.y + tolerance,
+            y: LinearRail.size.x + tolerance,
+            z: height + 2
+        )
+        .aligned(at: .centerXY)
+        .translated(x: Frame.outerPointDistance - Motion.railInset - LinearRail.size.y / 2, z: -1)
+
+        endstopBoardPocket(tolerance: tolerance)
+
+        // Cable channel up from the corner cover
+        CornerCover.innerChannelShape
+            .extruded(height: height + 1)
+
+        // Corner cover's side mount screws
+        Cylinder(diameter: CornerCover.mountHoleClearanceDiameter, height: height + 1)
+            .translated(z: -0.01)
+            .adding {
+                Cylinder(diameter: CornerCover.mountHoleHeadDiameter, height: height)
+                    .translated(z: coverMountBottomThickness)
+            }
+            .translated(.init(CornerCover.mountSideHoleOffset))
+            .symmetry(over: .y)
+
+        // Pilot holes for the top cover
+        for offset in coverMountPositions {
+            Cylinder(diameter: coverMountPilotHoleDiameter, height: coverMountPilotHoleDepth + 1)
+                .translated(x: Frame.outerPointDistance, z: height - coverMountPilotHoleDepth)
+                .translated(.init(offset))
                 .symmetry(over: .y)
-                .flipped(along: .x)
-                .translated(x: topRollerXOffset)
-            }
+        }
+    }
+
+    /// The recess the endstop board slides into, with its switch protruding below.
+    private static func endstopBoardPocket(tolerance: Double) -> any Geometry3D {
+        let boardOffset = Vector2D(-1, -0.01)
+        let boardHoleDiameter = 2.8
+
+        return Rectangle(EndstopBoard.size.xy + tolerance + 0.2)
+            .cuttingEdgeProfile(.fillet(radius: EndstopBoard.holeInset), on: .topRight)
+            .rotated(180°)
+            .aligned(at: .centerX, .minY)
+            .extruded(height: height)
             .adding {
-                topCover
-                    .translated(z: topHeight + 0.01)
-                    //.repeated(around: .z, count: 3)
-                    .inBackground()
-                    .colored(.green, alpha: 0.4)
-                    .hidden()
+                Box(EndstopBoard.endstopSize + [0, 0, 1])
+                    .aligned(at: .centerX, .minY, .maxZ)
+                    .translated(z: 0.01)
 
-                topCoverWithCableOutlet
-                    .translated(z: topHeight + 0.01)
-                    .rotated(z: -120°)
-                    .inBackground()
-                    .colored(.green, alpha: 0.4)
-                    .hidden()
-
-                handleCover
-                    .rotated(x: 180°)
-                    .translated(x: topHandleXOffset)
-                    .inBackground()
-
-                rollerHolderCover
-                    .translated(x: 0.01, y: 0.01, z: 0.01)
-                    .translated(z: Self.farSideRollerHolderBaseHeight)
-                    .inBackground()
-                    .hidden()
-                    //.disabled()
+                Cylinder(diameter: boardHoleDiameter, height: height)
+                    .translated(
+                        x: EndstopBoard.size.x / 2 - EndstopBoard.holeInset,
+                        y: EndstopBoard.holeInset,
+                        z: -EndstopBoard.endstopSize.z + 0.4
+                    )
+                    .symmetry(over: .x)
             }
+            .aligned(at: .maxX)
+            .translated(
+                x: Frame.outerPointDistance - Motion.beltCenterInset + boardOffset.x,
+                y: idlerSpaceWidth / 2 + boardOffset.y,
+                z: EndstopBoard.endstopSize.z
+            )
     }
 
-    let topCoverBaseCornerShape = baseCornerShape.cloned {
-        let angle = -53°
-        let offset = 5.0
-        $0.translated(x: -sin(angle) * offset, y: cos(angle) * offset)
-        $0.translated(x: -sin(angle) * offset, y: cos(angle) * -offset)
+    /// Collars that centre the idler on its bolt, hulled downward so they print unsupported.
+    private static var idlerHolderRings: any Geometry3D {
+        Cylinder(diameter: idlerHolderRingDiameter, height: idlerHolderRingLength)
+            .rotated(y: 90°)
+            .cloned {
+                $0.translated(x: -idlerHolderRingLength, z: -idlerHolderRingLength)
+            }
+            .convexHull()
+            .translated(x: -idlerSpaceLength / 2)
+            .symmetry(over: .x)
+            .translated(x: Frame.outerPointDistance - Motion.beltCenterInset)
+            .translated(z: idlerCenterZ)
     }
+
+    /// The bolt holes serving one tower: the idler axle and the rail's upper fixing.
+    @GeometryBuilder3D
+    private static var towerBoltCutouts: any Geometry3D {
+        let boltEnd = Frame.outerPointDistance - Motion.beltCenterInset + idlerSpaceLength / 2 + 1.0
+        let boltStart = boltEnd - idlerBoltLength - 0.1
+
+        // Idler bolt, hulled up so it can be dropped in from above
+        Cylinder(diameter: idlerHoleDiameter, height: boltEnd - boltStart)
+            .rotated(y: 90°)
+            .cloned {
+                $0.translated(z: height)
+            }
+            .convexHull()
+            .translated(x: boltStart, z: idlerCenterZ)
+
+        Idler()
+            .aligned(at: .centerZ)
+            .rotated(y: 90°)
+            .translated(x: Frame.outerPointDistance - Motion.beltCenterInset, z: idlerCenterZ)
+            .inBackground()
+
+        // Rail nut trap, and the screw's access hole
+        Box([Motion.railNutTrapThickness, Motion.railNutTrapWidth, height])
+            .aligned(at: .centerY, .maxX)
+            .translated(z: -Motion.railNutTrapWidth / 2)
+            .translated(x: railNutTrapX, z: railMountZ)
+
+        Circle(diameter: LinearRail.holeDiameter)
+            .overhangSafe(.bridge)
+            .rotated(90°)
+            .extruded(height: 10)
+            .rotated(y: 90°)
+            .translated(x: railNutTrapX - 5, z: railMountZ)
+
+        // Rail bolt head, hulled up and outward for driver access
+        Cylinder(diameter: railBoltHeadDiameter, height: railBoltHeadLength)
+            .rotated(y: 90°)
+            .cloned { $0.translated(z: height) }
+            .convexHull()
+            .cloned {
+                $0.translated(x: railBoltHeadLength - 1, z: railBoltHeadDiameter / 2)
+            }
+            .translated(x: Frame.outerPointDistance - Motion.railInset - 0.1, z: railMountZ)
+
+        idlerBolt.headShape
+            .scaled(1.2)
+            .rotated(y: 90°)
+            .cloned { $0.translated(z: height) }
+            .convexHull()
+            .translated(x: boltEnd - idlerBoltLength - 0.2, z: idlerCenterZ)
+            .hidden()
+    }
+
+    /// Mating parts shown in place, to check fit.
+    @GeometryBuilder3D
+    private static var assemblyPreview: any Geometry3D {
+        topCover
+            .translated(z: height + 0.01)
+            .inBackground()
+            .colored(.green, alpha: 0.4)
+            .hidden()
+
+        topCoverWithCableOutlet
+            .translated(z: height + 0.01)
+            .rotated(z: -120°)
+            .inBackground()
+            .colored(.green, alpha: 0.4)
+            .hidden()
+
+        handleCover
+            .rotated(x: 180°)
+            .translated(x: handleXOffset)
+            .inBackground()
+
+        farHolderCover
+            .translated(x: 0.01, y: 0.01, z: 0.01)
+            .translated(z: farHolderBaseHeight)
+            .inBackground()
+            .hidden()
+    }
+
+    // MARK: - Covers
+    //
+    // Three separate prints close the top: one over each corner, one over the handle's LED
+    // channel, and one over the far roller holder.
+
+    /// The footprint of one corner cover plate: the frame's corner wedge, splayed sideways so the
+    /// plate overlaps the shell it sits on.
+    static let coverBaseCornerShape = Frame.cornerShape
+        .cloned {
+            let angle = -53°
+            let offset = 5.0
+            $0.translated(x: -sin(angle) * offset, y: cos(angle) * offset)
+            $0.translated(x: -sin(angle) * offset, y: cos(angle) * -offset)
+        }
         .convexHull()
-        .intersecting { baseShape }
+        .intersecting { Frame.shape }
 
-    var topCover: any Geometry3D {
-        baseShape.subtracting { Self.innerShape }
+    /// The plate covering one corner of the top.
+    static var topCover: any Geometry3D {
+        Frame.shape
+            .subtracting { innerShape }
             .adding {
-                topCoverBaseCornerShape
+                coverBaseCornerShape
                     .repeated(count: 3)
             }
-            .extruded(height: topHeight + topCoverThickness, topEdge: .fillet(radius: topFilletRadius))
-            //.highlighted()
+            .extruded(height: height + coverThickness, topEdge: .fillet(radius: filletRadius))
+            // Keep only the corner in question, at the height the cover occupies
             .intersecting {
-                topCoverBaseCornerShape
-                    .extruded(height: topCoverThickness + 1)
-                    .translated(z: topHeight)
+                coverBaseCornerShape
+                    .extruded(height: coverThickness + 1)
+                    .translated(z: height)
             }
-            .translated(z: -topHeight)
+            .translated(z: -height)
             .subtracting {
-                for offset in topCoverMountPositions {
-                    topCoverMountBoltEquivalent.clearanceHole(entry: .recessedHead)
+                for offset in coverMountPositions {
+                    coverMountBoltEquivalent.clearanceHole(entry: .recessedHead)
                         .flipped(along: .z)
-                        .translated(x: distanceToOuterPoint, z: topCoverThickness)
+                        .translated(x: Frame.outerPointDistance, z: coverThickness)
                         .translated(.init(offset))
                         .symmetry(over: .y)
                 }
             }
     }
 
-    let cableOutletAngle = -40°
-    let cableOutletHoleDiameter = 8.5
-    let cableOutletHolePosition = Vector2D(distanceToOuterPoint - 15, -23.2)
+    // MARK: - Cable outlet
 
-    var cableOutletShape: any Geometry2D {
+    static let cableOutletAngle = -40°
+    static let cableOutletHoleDiameter = 8.5
+    static let cableOutletHolePosition = Vector2D(Frame.outerPointDistance - 15, -23.2)
+
+    /// A slot for the wiring loom leaving the top, elongated along `cableOutletAngle`.
+    static var cableOutletShape: any Geometry2D {
         Circle(diameter: cableOutletHoleDiameter)
             .cloned { $0.translated(x: 20).rotated(cableOutletAngle) }
             .convexHull()
-            .translated(x: cableOutletHolePosition.x, y: cableOutletHolePosition.y)
+            .translated(cableOutletHolePosition)
     }
 
-    @GeometryBuilder3D
-    var topCoverWithCableOutlet: any Geometry3D {
-        let holeDiameter = cableOutletHoleDiameter
-        let holePosition = cableOutletHolePosition
-        let zipTiePostDiameter = holeDiameter
+    /// The one corner cover that the wiring passes through, with a post to zip-tie it to.
+    static var topCoverWithCableOutlet: any Geometry3D {
+        let zipTiePostDiameter = cableOutletHoleDiameter
         let zipTiePostHeight = 6.0
         let zipTiePostTopHeight = 1.0
         let zipTiePostOffset = 4.0
         let zipTiePostAngle = 140°
 
-        topCover
+        return topCover
             .adding {
-                Cylinder(diameter: zipTiePostDiameter, height: topCoverThickness + zipTiePostHeight)
+                Cylinder(diameter: zipTiePostDiameter, height: coverThickness + zipTiePostHeight)
                     .adding {
+                        // A lip at the top stops the tie sliding off
                         Cylinder(diameter: zipTiePostDiameter, height: zipTiePostTopHeight)
                             .adding {
                                 Cylinder(diameter: zipTiePostDiameter, height: 0.01)
                                     .translated(x: zipTiePostTopHeight, z: zipTiePostTopHeight)
                             }
                             .convexHull()
-                            .translated(z: topCoverThickness + zipTiePostHeight)
-
+                            .translated(z: coverThickness + zipTiePostHeight)
                     }
                     .translated(x: zipTiePostOffset)
                     .rotated(z: zipTiePostAngle)
-                    .translated(x: holePosition.x, y: holePosition.y)
+                    .translated(x: cableOutletHolePosition.x, y: cableOutletHolePosition.y)
             }
             .subtracting {
-                cornerCoverInnerChannelShape
-                    .extruded(height: topCoverThickness + 2)
+                CornerCover.innerChannelShape
+                    .extruded(height: coverThickness + 2)
                     .translated(z: -1)
                     .highlighted()
                     .hidden()
 
                 cableOutletShape
-                    .extruded(height: topCoverThickness + zipTiePostHeight + zipTiePostTopHeight + 2)
+                    .extruded(height: coverThickness + zipTiePostHeight + zipTiePostTopHeight + 2)
                     .translated(z: -1)
             }
     }
 
-    var handleCover: any Geometry3D {
-        Rectangle([handleBottomWidth, topLEDStripSize.x + 2 * handleCoverThickness])
+    /// A thin lid that clips over the LED strip channel in the handle.
+    static var handleCover: any Geometry3D {
+        let clipWidth = 10.0
+        let clipThickness = 1.0
+        let clipSpacing = 23.0
+
+        return Rectangle([handleBottomWidth, ledStripSize.x + 2 * handleCoverThickness])
             .aligned(at: .center)
             .extruded(height: handleCoverThickness, topEdge: .chamfer(depth: handleCoverThickness))
             .adding {
-                let clipWidth = 10.0
-                let clipThickness = 1.0
-                let clipSpacing = 23.0
-
+                // Barbs along both edges that spring into the channel's widened walls
                 Box([clipThickness, clipWidth, 0.01])
                     .aligned(at: .maxX, .centerY, .minZ)
                     .cloned {
-                        $0.translated(x: topLEDStripExpansion / 2 / 2, z: -topLEDStripSize.z / 2)
+                        $0.translated(x: ledStripExpansion / 2 / 2, z: -ledStripSize.z / 2)
                     }
                     .convexHull()
-                    .translated(x: topLEDStripSize.y / 2 - 0.1)
-                    .repeated(along: .y, in: 0..<topLEDStripSize.x / 2, step: clipSpacing)
+                    .translated(x: ledStripSize.y / 2 - 0.1)
+                    .repeated(along: .y, in: 0..<ledStripSize.x / 2, step: clipSpacing)
                     .symmetry(over: .xy)
             }
     }
 
-    let rollerHolderCoverMountPositions: [Vector2D] = [
-        [4.5, 4.5],
-        [4.5, 18.5],
-        [20.8, 4.5]
-    ]
+    /// The lid that closes the far roller holder's bearing pocket after assembly.
+    static var farHolderCover: any Geometry3D {
+        let coverHeight = height + coverThickness - farHolderBaseHeight
 
-    @GeometryBuilder3D
-    var rollerHolderCover: any Geometry3D {
-        let coverHeight = topHeight + topCoverThickness - Self.farSideRollerHolderBaseHeight
-        //print("coverHeight: \(coverHeight)")
-
-        baseShape.subtracting { Self.innerShape }
+        return Frame.shape
+            .subtracting { innerShape }
             .adding {
-                farSideRollerHolderMask
+                trimmedFarHolderMask
             }
-            .extruded(height: topHeight + topCoverThickness, topEdge: .fillet(radius: topFilletRadius))
+            .extruded(height: height + coverThickness, topEdge: .fillet(radius: filletRadius))
             .intersecting {
-                farSideRollerHolderCoverMask()
+                farHolderCoverMask()
             }
-            .translated(z: -Self.farSideRollerHolderBaseHeight)
+            .translated(z: -farHolderBaseHeight)
             .subtracting {
-                for offset in rollerHolderCoverMountPositions {
-                    topCoverMountBoltEquivalent.clearanceHole(entry: .recessedHead)
+                for offset in farHolderCoverMountPositions {
+                    coverMountBoltEquivalent.clearanceHole(entry: .recessedHead)
                         .flipped(along: .z)
-                        .translated(x: topRollerXOffset + topRollerLength / 2, y: topRollerYOffset, z: coverHeight - 0.4)
-                        .translated(topFarSideRollerHolderOffset)
+                        .translated(
+                            x: rollerXOffset + rollerLength / 2,
+                            y: rollerYOffset,
+                            z: coverHeight - 0.4
+                        )
+                        .translated(farHolderOffset)
                         .translated(.init(offset))
                 }
             }
     }
 }
-
-let handleBottomWidth = (topHandleDiameter / 2) * 2.squareRoot()
-let handleCoverThickness = 0.6
-
-let rollerHolderCoverPilotHoleDiameter = 2.65
-let rollerHolderCoverPilotHoleDepth = 8.0
