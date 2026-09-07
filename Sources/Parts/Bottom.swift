@@ -34,7 +34,7 @@ struct Bottom: Shape3D {
                     .extruded(height: Bottom.thickness + 2)
                     .translated(z: -1)
 
-                let countersink = Bottom.mountBoltEquivalent.clearanceHole(recessedHead: true)
+                let countersink = Bottom.mountBoltEquivalent.clearanceHole(entry: .recessedHead)
                     .flipped(along: .z)
                     .translated(z: Bottom.thickness)
 

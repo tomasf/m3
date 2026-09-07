@@ -255,14 +255,14 @@ struct Effector: Shape3D {
                 .translated(z: -Self.baseHeight)
                 .subtracting {
                     for mountPoint in Self.hotendMountTopScrewHoles {
-                        Self.hotendMountTopScrewPrototype.clearanceHole(recessedHead: true)
+                        Self.hotendMountTopScrewPrototype.clearanceHole(entry: .recessedHead)
                             .transformed(.rotation(from: .up, to: Direction3D(mountPoint.direction)))
                             .translated(mountPoint.top)
                             .symmetry(over: .y)
                         //.highlighted()
                     }
                     
-                    ThreadedHole(thread: Self.hotendMountThread, depth: Self.hotendMountThreadedLength, entryEnds: [.negative])
+                    ThreadedHole(thread: Self.hotendMountThread, depth: Self.hotendMountThreadedLength, leadIns: .leading)
                     Cylinder(diameter: Self.hotendMountThread.majorDiameter, height: 2)
                         .translated(z: Self.hotendMountThreadedLength)
                         .adding {
@@ -276,7 +276,7 @@ struct Effector: Shape3D {
                         .aligned(at: .centerXY)
                         .adding {
                             Bolt.hexSocketCountersunk(.m3, length: 8)
-                                .clearanceHole(recessedHead: true)
+                                .clearanceHole(entry: .recessedHead)
                                 .withTolerance(0.4)
                                 .distributed(at: Self.hotendMountExtruderMountHoleOffsets)
                         }
@@ -350,7 +350,7 @@ struct Effector: Shape3D {
             }
             .extruded(height: mountThickness, topEdge: .fillet(radius: 1))
             .subtracting {
-                screwPrototype.clearanceHole(recessedHead: true)
+                screwPrototype.clearanceHole(entry: .recessedHead)
                     .flipped(along: .z)
                     .translated(x: Self.fanDuctMountHoleOffset, z: mountThickness - 0.4)
                     .symmetry(over: .x)

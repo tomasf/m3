@@ -444,7 +444,7 @@ struct Top: Shape3D {
             .translated(z: -topHeight)
             .subtracting {
                 for offset in topCoverMountPositions {
-                    topCoverMountBoltEquivalent.clearanceHole(recessedHead: true)
+                    topCoverMountBoltEquivalent.clearanceHole(entry: .recessedHead)
                         .flipped(along: .z)
                         .translated(x: distanceToOuterPoint, z: topCoverThickness)
                         .translated(.init(offset))
@@ -547,7 +547,7 @@ struct Top: Shape3D {
             .translated(z: -Self.farSideRollerHolderBaseHeight)
             .subtracting {
                 for offset in rollerHolderCoverMountPositions {
-                    topCoverMountBoltEquivalent.clearanceHole(recessedHead: true)
+                    topCoverMountBoltEquivalent.clearanceHole(entry: .recessedHead)
                         .flipped(along: .z)
                         .translated(x: topRollerXOffset + topRollerLength / 2, y: topRollerYOffset, z: coverHeight - 0.4)
                         .translated(topFarSideRollerHolderOffset)

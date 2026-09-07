@@ -147,7 +147,7 @@ struct CornerCover: Shape3D {
                 // Bottom shape
                 Union {
                     // Subtract cover holes
-                    cornerCoverShape.filled().subtracting { cornerCoverShape }
+                    cornerCoverShape.fillingHoles().subtracting { cornerCoverShape }
 
                     // Rail
                     Rectangle(rail.size.xy + tolerance)

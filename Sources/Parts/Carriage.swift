@@ -102,7 +102,7 @@ let carriageBody = Box(carriageSize + .z(railCarriageCoverThickness))
             )
 
         // Mount holes
-        carriageBolt.clearanceHole(recessedHead: true)
+        carriageBolt.clearanceHole(entry: .recessedHead)
             .flipped(along: .z)
             .translated(z: carriageBaseThickness - 0.6)
             .translated(x: railCarriage.holeDistance.y / 2, y: railCarriage.holeDistance.x / 2)
@@ -133,7 +133,7 @@ let carriageBody = Box(carriageSize + .z(railCarriageCoverThickness))
             .repeated(along: .y, in: carriageMinY..<carriageMaxY, step: 2.0)
 
         // Cover mount
-        ThreadedHole(thread: carriageCoverBolt.thread, depth: carriageSize.z, entryEnds: [.positive])
+        ThreadedHole(thread: carriageCoverBolt.thread, depth: carriageSize.z, leadIns: .trailing)
             .distributed(at: [carriageMinY + carriageCoverBoltOffset, carriageMaxY - carriageCoverBoltOffset], along: .y)
             .hidden()
     }
@@ -149,7 +149,7 @@ let carriageCover = Rectangle(carriageSize.xy + [0, carriageCoverThickness])
         Box(carriageSize).aligned(at: .centerXY)
     }
     .subtracting {
-        carriageCoverBolt.clearanceHole(recessedHead: true)
+        carriageCoverBolt.clearanceHole(entry: .recessedHead)
             .flipped(along: .z)
             .translated(z: carriageCoverThickness - 0.6)
             .translated(y: carriageSize.y / 2 - carriageCoverBoltOffset)

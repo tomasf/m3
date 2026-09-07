@@ -24,7 +24,7 @@ let railCarriage = LinearRailCarriage()
 
 let stepper = StepperMotor()
 
-let squareNutDimensions = Nut.standardDimensionsForSquaredNut(.m3, series: .thin)
+let squareNutDimensions = Nut.standardDimensionsForSquareNut(.m3, series: .thin)
 let railNutTrapWidth = squareNutDimensions.width + 0.5
 let railNutTrapThickness = squareNutDimensions.thickness + 0.5
 
